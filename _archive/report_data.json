@@ -1,0 +1,308 @@
+{
+  "card_info": {
+    "name": "Mega Gardevoir ex",
+    "set_code": "M2a",
+    "number": "226/193 MA",
+    "grade": "Ungraded",
+    "jp_name": "メガサーナイト ex",
+    "c_name": "超級沙奈朵 ex",
+    "category": "Pokemon",
+    "release_info": "Unknown - Custom Card",
+    "illustrator": "Saboteri",
+    "market_heat": "Low 由於這是一張高品質的同人自製卡（Custom Card）而非官方發行版本，在二級市場上幾乎沒有流通熱度，主要價值在於插畫藝術欣賞。",
+    "features": "超級進化 (Mega Evolution) 主題設計\n獨特的 'MEGA SYMPHONIA' 藝術大標題\n具有紋理感的全圖閃卡工藝\nHP 360 高於一般官方卡片數值\n非官方繪師 Saboteri 繪製",
+    "collection_value": "Low 作為非官方產品，它不具備官方認證的稀有度或長期投資價值，收藏意義僅限於對該同人設計的喜愛。",
+    "competitive_freq": "Low 此卡並非官方對戰卡牌，無法在任何正式賽事中使用。",
+    "is_alt_art": false,
+    "img_url": "https://cdn.snkrdunk.com/upload_bg_removed/20251128023141-3.webp"
+  },
+  "snkr_records": [
+    {
+      "date": "1日前",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2日前",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2日前",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2日前",
+      "price": 1100.0,
+      "grade": "A"
+    },
+    {
+      "date": "2日前",
+      "price": 1500.0,
+      "grade": "A"
+    },
+    {
+      "date": "3日前",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "3日前",
+      "price": 1111.0,
+      "grade": "A"
+    },
+    {
+      "date": "3日前",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/20",
+      "price": 1300.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/19",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/19",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/19",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/18",
+      "price": 3333.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/18",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/17",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/16",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/13",
+      "price": 1500.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/13",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/13",
+      "price": 1000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/12",
+      "price": 1000.0,
+      "grade": "A"
+    }
+  ],
+  "pc_records": [
+    {
+      "date": "2026-02-22",
+      "price": 47.69,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-22",
+      "price": 56.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-20",
+      "price": 59.99,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-20",
+      "price": 59.99,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-19",
+      "price": 56.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-18",
+      "price": 56.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-17",
+      "price": 66.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-17",
+      "price": 56.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-16",
+      "price": 46.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-15",
+      "price": 88.73,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-15",
+      "price": 42.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-15",
+      "price": 42.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-15",
+      "price": 51.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-15",
+      "price": 40.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-15",
+      "price": 66.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-15",
+      "price": 67.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-15",
+      "price": 63.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-15",
+      "price": 71.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-15",
+      "price": 54.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-12",
+      "price": 21.5,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2026-02-12",
+      "price": 50.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-10",
+      "price": 49.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-10",
+      "price": 47.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-09",
+      "price": 38.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-08",
+      "price": 20.0,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2026-02-08",
+      "price": 17.5,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2026-02-08",
+      "price": 69.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-05",
+      "price": 52.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-05",
+      "price": 52.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-05",
+      "price": 52.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-05",
+      "price": 70.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-04",
+      "price": 20.0,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2026-02-04",
+      "price": 17.52,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2026-02-04",
+      "price": 20.0,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2026-02-04",
+      "price": 60.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-04",
+      "price": 51.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-19",
+      "price": 15.5,
+      "grade": "PSA 9"
+    }
+  ]
+}
