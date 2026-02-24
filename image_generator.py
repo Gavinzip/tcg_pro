@@ -286,10 +286,14 @@ def create_premium_matplotlib_chart_b64(records, color_line='#f4d125', target_gr
     ax2.spines['bottom'].set_visible(False)
 
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+    # --- Intelligent Labeling Fix ---
+    # Use AutoDateLocator to prevent crowded labels
+    locator = mdates.AutoDateLocator(minticks=3, maxticks=7)
+    ax1.xaxis.set_major_locator(locator)
     
-    ax1.tick_params(axis='x', colors='#cbc190', labelsize=13)
-    ax1.tick_params(axis='y', colors='#cbc190', labelsize=13)
-    ax2.tick_params(axis='y', colors='#a1a1aa', labelsize=13)
+    ax1.tick_params(axis='x', colors='#cbc190', labelsize=11, rotation=20)
+    ax1.tick_params(axis='y', colors='#cbc190', labelsize=12)
+    ax2.tick_params(axis='y', colors='#a1a1aa', labelsize=12)
     
     # Bold labels
     for t in ax1.get_xticklabels() + ax1.get_yticklabels():
