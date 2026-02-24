@@ -452,6 +452,26 @@ async def generate_report(card_data, snkr_records, pc_records, out_dir=None):
 
     # --- Dynamic Charts and Stats Construction ---
     target_grade = card_data.get('grade', 'Ungraded')
+
+    # Calculate time span for Total Entries
+    all_dates = []
+    for r in (pc_records or []) + (snkr_records or []):
+        all_dates.append(parse_d(r['date']))
+        
+    days_span = ""
+    if all_dates:
+        min_date = min(all_dates)
+        delta_days = (datetime.now() - min_date).days
+        if delta_days == 0:
+            days_span = " (24h內)"
+        elif delta_days < 30:
+            days_span = f" (近{delta_days}天)"
+        elif delta_days <= 60:
+            days_span = f" (近1個月)" # roughly
+        else:
+            months = round(delta_days / 30)
+            days_span = f" (近{months}個月)"
+
     is_raw = target_grade in ['Ungraded', 'A']
 
     if is_raw:

@@ -465,12 +465,13 @@ def analyze_image_with_minimax(image_path, api_key):
         print(json.dumps(result, indent=2, ensure_ascii=False))
         print("------------------\n")
         return result
+
     except Exception as e:
         print(f"❌ Failed to parse JSON response: {e}")
         print(f"Raw response: {data}")
         return None
 
-def main():
+async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--image_path", nargs='+', required=True, help="卡片圖片的本機路徑 (可傳入多張圖片)")
     parser.add_argument("--api_key", required=False, help="Minimax API Key (若未指定，則從環境變數 MINIMAX_API_KEY 讀取)")
@@ -491,7 +492,7 @@ def main():
         print(f"\n==================================================")
         print(f"🔄 開始處理圖片: {img_path}")
         print(f"==================================================")
-        process_single_image(img_path, api_key, args.out_dir)
+        await process_single_image(img_path, api_key, args.out_dir)
 
 async def process_single_image(image_path, api_key, out_dir=None):
     if not os.path.exists(image_path):
@@ -669,4 +670,5 @@ async def process_single_image(image_path, api_key, out_dir=None):
     return final_report
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
