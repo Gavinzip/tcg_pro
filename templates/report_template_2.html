@@ -87,20 +87,19 @@
 <body class="bg-black text-slate-100 font-display min-h-[900px] m-0 p-0 flex items-center justify-center">
 
     <!-- Main Container -->
-    <div class="relative w-[1200px] min-h-[900px] flex flex-col metallic-border overflow-hidden">
+    <div class="relative w-[1200px] min-h-[900px] flex flex-col metallic-border overflow-hidden" style="background: 
+            radial-gradient(circle at 105% 105%, rgba(212, 175, 55, 0.12) 0%, transparent 60%),
+            radial-gradient(circle at 85% 95%, rgba(170, 131, 35, 0.05) 0%, transparent 70%),
+            #0a0a09;">
 
-        <!-- Ambient glows -->
-        <div
-            class="absolute top-0 right-1/4 w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(212,175,55,0.06)_0%,transparent_60%)] -translate-y-1/2">
-        </div>
+        <!-- (Top lighting removed for artistic asymmetry) -->
         <!-- Grain texture overlay -->
         <div class="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-screen"
             style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 400 400%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');">
         </div>
 
         <!-- Header Section -->
-        <div
-            class="relative z-10 p-10 pb-8 text-center border-b border-border-gold/30 bg-gradient-to-b from-surface/40 to-black/40 text-center">
+        <div class="relative z-10 p-10 pb-8 text-center border-b border-border-gold/30 bg-transparent text-center">
             <h1 class="text-4xl md:text-5xl font-black tracking-tight text-white mb-3 gold-gradient-text"
                 style="filter:none;">
                 Global Market Data
@@ -121,7 +120,7 @@
             class="relative z-10 flex-1 grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-border-gold/40">
 
             <!-- Left Column: PriceCharting -->
-            <div class="flex flex-col p-8 bg-black/40">
+            <div class="flex flex-col p-8 bg-black/10">
                 <div class="flex items-center gap-4 mb-4">
                     <div
                         class="p-3 rounded-xl bg-gradient-to-br from-primary-dark/20 to-black border border-primary/30 shadow-[0_0_15px_rgba(212,175,55,0.1)]">
@@ -141,7 +140,7 @@
             </div>
 
             <!-- Right Column: SNKRDUNK -->
-            <div class="flex flex-col p-8 bg-black/40">
+            <div class="flex flex-col p-8 bg-black/10">
                 <div class="flex items-center gap-4 mb-4">
                     <div
                         class="p-3 rounded-xl bg-gradient-to-br from-primary-dark/20 to-black border border-primary/30 shadow-[0_0_15px_rgba(212,175,55,0.1)]">
@@ -163,7 +162,7 @@
 
         <!-- Footer: Aggregated Stats -->
         <div
-            class="relative z-10 p-8 border-t border-border-gold/40 bg-gradient-to-t from-surface to-black/60 shadow-[inset_0_10px_30px_rgba(0,0,0,0.5)]">
+            class="relative z-10 p-8 border-t border-border-gold/40 bg-gradient-to-t from-surface/20 to-black/30 shadow-[inset_0_10px_30px_rgba(0,0,0,0.5)]">
             <h3 class="text-sm font-black uppercase tracking-[0.3em] text-primary-dark mb-6 flex items-center gap-3">
                 <span
                     class="w-2 h-2 rounded-full bg-primary-light shadow-[0_0_8px_rgba(255,223,115,1)] animate-pulse"></span>

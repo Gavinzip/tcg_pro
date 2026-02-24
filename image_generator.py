@@ -72,10 +72,12 @@ def get_image_base64_from_url(url):
 
 def parse_level_and_desc(text):
     text = str(text).strip()
-    match = re.match(r'^([A-Za-z]+)[，,：:\s]+(.*)', text)
+    match = re.match(r'^([A-Za-z]+)[。，,：:\s]+(.*)', text)
     if match:
-        return match.group(1).capitalize(), match.group(2).strip()
-    return "Medium", text
+        level = match.group(1).capitalize()
+        desc = match.group(2).strip().lstrip('\\').lstrip(':').lstrip(' ').strip()
+        return level, desc
+    return "Medium", text.lstrip('\\').lstrip(':').lstrip(' ').strip()
 
 def get_width_from_level(level):
     l = level.lower()
@@ -549,10 +551,7 @@ async def generate_report(card_data, snkr_records, pc_records, out_dir=None):
         
         pc_charts_html = f"""
         <div class="w-full h-44 mb-10 flex items-center justify-center relative">
-            <div class="relative glass-panel rounded-xl border border-border-gold/30 p-2 w-full h-full">
-                <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-border-gold/50 px-3 py-1 rounded-full z-20 shadow-lg">Price Chart</span>
-                <img src="{c_pc}" class="w-full h-full object-contain mix-blend-screen" />
-            </div>
+            <img src="{c_pc}" class="w-full h-full object-contain mix-blend-screen" />
         </div>"""
         
         pc_table_html = f"""

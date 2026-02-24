@@ -187,7 +187,10 @@
 
         <!-- Left Side: Card Presentation -->
         <div class="relative w-full md:w-5/12 min-h-full flex flex-col items-center justify-center p-4 z-20 border-r border-[#d4af37]/30"
-            style="background: radial-gradient(circle at 50% 40%, #3a321a 0%, #15130b 80%);">
+            style="background: 
+                radial-gradient(circle at 20% 20%, rgba(58, 50, 26, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(21, 19, 11, 0.6) 0%, transparent 50%),
+                radial-gradient(circle at 50% 40%, #2a2412 0%, #15130b 100%);">
             <!-- Badge positioned relative to the left panel, not the wireframe -->
             <div class="absolute top-6 right-6 z-50 flex flex-col gap-3 items-end">
                 {{ badge_html }}
@@ -221,8 +224,10 @@
 
 
         <!-- Right Side: Content -->
-        <div class="relative w-full md:w-7/12 h-full flex flex-col justify-between p-12 z-10"
-            style="background: linear-gradient(135deg, rgba(32,28,16,1) 0%, rgba(10,9,7,1) 80%);">
+        <div class="relative w-full md:w-7/12 h-full flex flex-col justify-between p-12 z-10" style="background: 
+                radial-gradient(circle at 90% 10%, rgba(212, 175, 55, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 10% 90%, rgba(170, 131, 35, 0.03) 0%, transparent 40%),
+                linear-gradient(135deg, #1a170d 0%, #0a0907 100%);">
             <div class="space-y-8 flex-1">
 
                 <!-- Header Section -->

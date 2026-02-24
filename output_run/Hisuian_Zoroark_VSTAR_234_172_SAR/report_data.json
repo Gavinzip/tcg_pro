@@ -1,0 +1,833 @@
+{
+  "card_info": {
+    "name": "Hisuian Zoroark VSTAR",
+    "set_code": "s12a",
+    "number": "234/172 SAR",
+    "grade": "PSA 10",
+    "jp_name": "ヒスイゾロアークVSTAR",
+    "c_name": "洗翠索羅亞克VSTAR",
+    "category": "Pokemon",
+    "release_info": "2022 - VSTAR Universe",
+    "illustrator": "SIE NANAHARA",
+    "market_heat": "High。作為 VSTAR Universe (s12a) 中的 SAR 等級卡片，由知名繪師 SIE NANAHARA 創作，其精美的畫風與洗翠索羅亞克的高人氣使其在市場上維持極高關注度。",
+    "features": "SAR (Special Art Rare) 特殊藝術稀有度\n全圖滿版藝術設計，具有強烈浮世繪風格的插畫\nVSTAR 專屬特殊閃膜與紋路工藝",
+    "collection_value": "High。VSTAR Universe 是劍盾系列的巔峰之作，SAR 卡片是其中的頂級稀有度。PSA 10 的滿分評級使其在收藏市場中具備極佳的保值與增值潛力。",
+    "competitive_freq": "Medium。雖然在劍盾環境中是一張具備爆發力的強大打點卡片，但隨環境更迭，目前在標準賽制中的主流出賽率有所下降，收藏價值已超越競技價值。",
+    "is_alt_art": false,
+    "img_url": "https://cdn.snkrdunk.com/upload_bg_removed/20230201065946-0.webp"
+  },
+  "snkr_records": [
+    {
+      "date": "3日前",
+      "price": 3000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/10",
+      "price": 3100.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/02/01",
+      "price": 3300.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/01/25",
+      "price": 3000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/01/22",
+      "price": 2800.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/12/30",
+      "price": 3100.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/12/12",
+      "price": 2800.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/12/10",
+      "price": 2650.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/12/10",
+      "price": 2700.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/11/30",
+      "price": 3100.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/11/26",
+      "price": 3100.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/11/15",
+      "price": 13000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/11/13",
+      "price": 3000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/11/09",
+      "price": 3500.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/11/07",
+      "price": 3100.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/11/07",
+      "price": 25500.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/11/02",
+      "price": 6200.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/10/28",
+      "price": 3500.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/10/25",
+      "price": 3000.0,
+      "grade": "A"
+    },
+    {
+      "date": "2025/10/25",
+      "price": 2600.0,
+      "grade": "A"
+    },
+    {
+      "date": "2026/01/28",
+      "price": 2000.0,
+      "grade": "B"
+    },
+    {
+      "date": "2026/01/11",
+      "price": 1999.0,
+      "grade": "B"
+    },
+    {
+      "date": "2026/01/05",
+      "price": 2000.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/11/17",
+      "price": 2000.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/11/17",
+      "price": 2000.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/11/10",
+      "price": 1200.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/11/02",
+      "price": 2300.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/10/08",
+      "price": 8000.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/10/08",
+      "price": 6000.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/10/07",
+      "price": 6000.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/09/14",
+      "price": 2300.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/08/19",
+      "price": 1800.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/03/12",
+      "price": 2000.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/01/28",
+      "price": 1680.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/01/28",
+      "price": 1500.0,
+      "grade": "B"
+    },
+    {
+      "date": "2023/12/06",
+      "price": 1000.0,
+      "grade": "B"
+    },
+    {
+      "date": "2023/12/06",
+      "price": 1000.0,
+      "grade": "B"
+    },
+    {
+      "date": "2023/10/02",
+      "price": 1000.0,
+      "grade": "B"
+    },
+    {
+      "date": "2023/07/30",
+      "price": 1250.0,
+      "grade": "B"
+    },
+    {
+      "date": "2023/06/29",
+      "price": 1200.0,
+      "grade": "B"
+    },
+    {
+      "date": "2025/10/08",
+      "price": 1800.0,
+      "grade": "C"
+    },
+    {
+      "date": "2025/03/11",
+      "price": 1000.0,
+      "grade": "C"
+    },
+    {
+      "date": "5時間前",
+      "price": 9850.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "5時間前",
+      "price": 10000.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "5時間前",
+      "price": 9999.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "6時間前",
+      "price": 10480.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "6時間前",
+      "price": 10500.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "6時間前",
+      "price": 10500.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "6時間前",
+      "price": 10000.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "7時間前",
+      "price": 9900.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "7時間前",
+      "price": 9600.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "7時間前",
+      "price": 9800.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "15時間前",
+      "price": 9300.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "1日前",
+      "price": 9300.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "1日前",
+      "price": 9200.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "1日前",
+      "price": 9300.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "1日前",
+      "price": 9400.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "2日前",
+      "price": 9300.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "2日前",
+      "price": 9290.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "2日前",
+      "price": 9200.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "2日前",
+      "price": 10480.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "3日前",
+      "price": 9300.0,
+      "grade": "PSA10"
+    },
+    {
+      "date": "2026/01/28",
+      "price": 2480.0,
+      "grade": "PSA9"
+    },
+    {
+      "date": "2026/01/17",
+      "price": 3800.0,
+      "grade": "PSA9"
+    },
+    {
+      "date": "2025/10/07",
+      "price": 4000.0,
+      "grade": "PSA9"
+    },
+    {
+      "date": "2025/07/10",
+      "price": 1780.0,
+      "grade": "PSA9"
+    },
+    {
+      "date": "2025/07/09",
+      "price": 1800.0,
+      "grade": "PSA9"
+    },
+    {
+      "date": "2025/07/01",
+      "price": 1900.0,
+      "grade": "PSA9"
+    },
+    {
+      "date": "2025/05/14",
+      "price": 1500.0,
+      "grade": "PSA9"
+    },
+    {
+      "date": "2025/02/05",
+      "price": 2800.0,
+      "grade": "PSA9"
+    },
+    {
+      "date": "2024/04/22",
+      "price": 1100.0,
+      "grade": "PSA9"
+    },
+    {
+      "date": "2023/11/18",
+      "price": 1500.0,
+      "grade": "PSA9"
+    },
+    {
+      "date": "2026/01/22",
+      "price": 3000.0,
+      "grade": "PSA8以下"
+    },
+    {
+      "date": "2026/01/18",
+      "price": 2499.0,
+      "grade": "PSA8以下"
+    },
+    {
+      "date": "2026/01/10",
+      "price": 9900.0,
+      "grade": "BGS10 GL"
+    },
+    {
+      "date": "2026/01/07",
+      "price": 9900.0,
+      "grade": "BGS10 GL"
+    }
+  ],
+  "pc_records": [
+    {
+      "date": "2026-02-23",
+      "price": 79.99,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-22",
+      "price": 16.5,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-02-17",
+      "price": 24.5,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2026-02-13",
+      "price": 70.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-12",
+      "price": 16.57,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-02-10",
+      "price": 76.68,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-09",
+      "price": 20.0,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-02-06",
+      "price": 21.99,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-02-06",
+      "price": 30.48,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-02-05",
+      "price": 22.99,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-02-05",
+      "price": 98.8,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-02-04",
+      "price": 21.99,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-02-02",
+      "price": 31.0,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-02-01",
+      "price": 21.99,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-31",
+      "price": 50.0,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-31",
+      "price": 87.05,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-30",
+      "price": 72.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-28",
+      "price": 80.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-27",
+      "price": 31.26,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-27",
+      "price": 24.77,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-27",
+      "price": 25.91,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-26",
+      "price": 81.79,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-24",
+      "price": 16.75,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-24",
+      "price": 63.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-24",
+      "price": 68.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-23",
+      "price": 59.99,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-21",
+      "price": 84.21,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-20",
+      "price": 24.97,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-20",
+      "price": 66.29,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-17",
+      "price": 29.98,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-17",
+      "price": 66.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-15",
+      "price": 68.9,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-14",
+      "price": 86.39,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-13",
+      "price": 27.99,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-12",
+      "price": 75.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-11",
+      "price": 75.64,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-10",
+      "price": 15.0,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-09",
+      "price": 26.86,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-09",
+      "price": 26.8,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-09",
+      "price": 26.99,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-09",
+      "price": 29.99,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-09",
+      "price": 23.41,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-09",
+      "price": 26.5,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-09",
+      "price": 25.54,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-09",
+      "price": 24.0,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-09",
+      "price": 32.2,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-09",
+      "price": 12.1,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-06",
+      "price": 22.3,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-06",
+      "price": 84.99,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-06",
+      "price": 26.77,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2026-01-05",
+      "price": 84.95,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2026-01-05",
+      "price": 89.99,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2025-12-28",
+      "price": 81.65,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2025-12-21",
+      "price": 60.53,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2025-11-25",
+      "price": 70.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2025-11-03",
+      "price": 70.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2025-10-27",
+      "price": 59.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2025-10-25",
+      "price": 35.0,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2025-10-21",
+      "price": 106.91,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2025-10-18",
+      "price": 71.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2025-10-18",
+      "price": 100.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2025-10-13",
+      "price": 83.66,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2025-10-12",
+      "price": 71.0,
+      "grade": "PSA 10"
+    },
+    {
+      "date": "2025-10-01",
+      "price": 70.0,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2025-09-15",
+      "price": 41.0,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2025-08-15",
+      "price": 42.0,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2025-08-01",
+      "price": 15.5,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2025-07-19",
+      "price": 50.0,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2025-02-02",
+      "price": 17.97,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2024-10-29",
+      "price": 25.99,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2024-10-06",
+      "price": 12.5,
+      "grade": "PSA 8"
+    },
+    {
+      "date": "2024-06-20",
+      "price": 20.0,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2024-05-14",
+      "price": 26.25,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2024-01-06",
+      "price": 19.99,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2024-01-05",
+      "price": 18.5,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2023-12-02",
+      "price": 42.37,
+      "grade": "Ungraded"
+    },
+    {
+      "date": "2023-09-18",
+      "price": 20.5,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2023-08-20",
+      "price": 10.65,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2023-08-19",
+      "price": 21.5,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2023-07-04",
+      "price": 30.0,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2023-06-04",
+      "price": 18.5,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2023-03-22",
+      "price": 26.0,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2023-03-12",
+      "price": 25.02,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2023-03-05",
+      "price": 26.0,
+      "grade": "PSA 8"
+    },
+    {
+      "date": "2023-02-24",
+      "price": 36.0,
+      "grade": "PSA 9"
+    },
+    {
+      "date": "2023-02-20",
+      "price": 39.0,
+      "grade": "PSA 9"
+    }
+  ]
+}
