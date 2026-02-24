@@ -450,76 +450,138 @@ async def generate_report(card_data, snkr_records, pc_records, out_dir=None):
         html1 = re.sub(pattern, str(v).replace('\\', r'\\') if v is not None else "", html1)
         
 
-    # Calculate time span for Total Entries
-    all_dates = []
-    for r in (pc_records or []) + (snkr_records or []):
-        all_dates.append(parse_d(r['date']))
+    # --- Dynamic Charts and Stats Construction ---
+    target_grade = card_data.get('grade', 'Ungraded')
+    is_raw = target_grade in ['Ungraded', 'A']
+
+    if is_raw:
+        # Generate 4 Charts (2 per column) with 30-day volume metrics overlaid
+        c_pc_10 = create_premium_matplotlib_chart_b64(pc_records, color_line='#f4d125', target_grade='PSA 10', is_jpy=False)
+        c_pc_raw = create_premium_matplotlib_chart_b64(pc_records, color_line='#f4d125', target_grade='Ungraded', is_jpy=False)
+        c_sk_10 = create_premium_matplotlib_chart_b64(snkr_records, color_line='#f4d125', target_grade='S', is_jpy=True)
+        c_sk_raw = create_premium_matplotlib_chart_b64(snkr_records, color_line='#f4d125', target_grade='A', is_jpy=True)
         
-    days_span = ""
-    if all_dates:
-        min_date = min(all_dates)
-        delta_days = (datetime.now() - min_date).days
-        if delta_days == 0:
-            days_span = " (24h內)"
-        elif delta_days < 30:
-            days_span = f" (近{delta_days}天)"
-        elif delta_days <= 60:
-            days_span = f" (近1個月)" # roughly
+        v_pc_10 = count_30_days(pc_records, 'PSA 10')
+        v_pc_raw_cutoff = datetime.now() - timedelta(days=30)
+        v_pc_raw = len([r for r in (pc_records or []) if r.get('grade') != 'PSA 10' and parse_d(r['date']) > v_pc_raw_cutoff])
+        
+        # SNKRDUNK volume metrics (Synced with chart filters)
+        v_sk_10_cutoff = datetime.now() - timedelta(days=30)
+        v_sk_10 = len([r for r in (snkr_records or []) if r.get('grade') in ['S', 'PSA10', 'PSA 10'] and parse_d(r['date']) > v_sk_10_cutoff])
+        v_sk_raw = count_30_days(snkr_records, 'A')
+
+        pc_charts_html = f"""
+        <div class="w-full flex flex-col gap-8 mb-4 mt-4">
+            <div class="relative glass-panel rounded-xl border border-green-500/40 p-2 shadow-[0_0_20px_rgba(34,197,94,0.15)]">
+                <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-green-500/50 px-3 py-1 rounded-full z-20 shadow-lg">PSA 10 Trend</span>
+                <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-green-500/50 z-20 shadow-lg">30d Vol: {v_pc_10} Set</span>
+                <img src="{c_pc_10}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
+            </div>
+            <div class="relative glass-panel rounded-xl border border-red-500/40 p-2 shadow-[0_0_20px_rgba(239,68,68,0.15)]">
+                <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-red-500/50 px-3 py-1 rounded-full z-20 shadow-lg">Ungraded Trend</span>
+                <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-red-500/50 z-20 shadow-lg">30d Vol: {v_pc_raw} Set</span>
+                <img src="{c_pc_raw}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
+            </div>
+        </div>"""
+        
+        snkr_charts_html = f"""
+        <div class="w-full flex flex-col gap-8 mb-4 mt-4">
+            <div class="relative glass-panel rounded-xl border border-green-500/40 p-2 shadow-[0_0_20px_rgba(34,197,94,0.15)]">
+                <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-green-500/50 px-3 py-1 rounded-full z-20 shadow-lg">PSA 10 Trend</span>
+                <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-green-500/50 z-20 shadow-lg">30d Vol: {v_sk_10} Set</span>
+                <img src="{c_sk_10}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
+            </div>
+            <div class="relative glass-panel rounded-xl border border-red-500/40 p-2 shadow-[0_0_20px_rgba(239,68,68,0.15)]">
+                <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-red-500/50 px-3 py-1 rounded-full z-20 shadow-lg">Ungraded Trend</span>
+                <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-red-500/50 z-20 shadow-lg">30d Vol: {v_sk_raw} Set</span>
+                <img src="{c_sk_raw}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
+            </div>
+        </div>"""
+
+        stat_1_t, stat_1_v = "PSA 10 Avg (完整品)", f"${avg_10:.2f}" if avg_10 > 0 else "N/A"
+        stat_2_t, stat_2_v = "Ungraded Avg (裸卡)", f"${avg_raw:.2f}" if avg_raw > 0 else "N/A"
+        stat_3_t, stat_3_v = "PSA 10 Max (最高成交價)", f"${max_10:.2f}" if max_10 > 0 else "N/A"
+        stat_4_t, stat_4_v = f"Total Entries{days_span}", str(total_entries)
+        
+        pc_table_html = ""
+        snkr_table_html = ""
+        
+    else:
+        # Standard 2 Charts (For Graded Cards)
+        if snkr_records:
+            if '10' in target_grade:
+                valid_snkr_grades = ['S', 'PSA10', 'PSA 10']
+            elif target_grade.lower() == 'ungraded':
+                valid_snkr_grades = ['A']
+            else:
+                valid_snkr_grades = [target_grade, target_grade.replace(' ', '')]
+            
+            snkr_target_records = [r for r in snkr_records if r['grade'] in valid_snkr_grades]
         else:
-            months = round(delta_days / 30)
-            days_span = f" (近{months}個月)"
+            snkr_target_records = []
 
-    # Generate 4 Charts (2 per column) with 30-day volume metrics overlaid
-    c_pc_10 = create_premium_matplotlib_chart_b64(pc_records, color_line='#f4d125', target_grade='PSA 10', is_jpy=False)
-    c_pc_raw = create_premium_matplotlib_chart_b64(pc_records, color_line='#f4d125', target_grade='Ungraded', is_jpy=False)
-    c_sk_10 = create_premium_matplotlib_chart_b64(snkr_records, color_line='#f4d125', target_grade='S', is_jpy=True)
-    c_sk_raw = create_premium_matplotlib_chart_b64(snkr_records, color_line='#f4d125', target_grade='A', is_jpy=True)
-    
-    v_pc_10 = count_30_days(pc_records, 'PSA 10')
-    v_pc_raw_cutoff = datetime.now() - timedelta(days=30)
-    v_pc_raw = len([r for r in (pc_records or []) if r.get('grade') != 'PSA 10' and parse_d(r['date']) > v_pc_raw_cutoff])
-    
-    # SNKRDUNK volume metrics (Synced with chart filters)
-    v_sk_10_cutoff = datetime.now() - timedelta(days=30)
-    v_sk_10 = len([r for r in (snkr_records or []) if r.get('grade') in ['S', 'PSA10', 'PSA 10'] and parse_d(r['date']) > v_sk_10_cutoff])
-    v_sk_raw = count_30_days(snkr_records, 'A')
+        c_pc = create_premium_matplotlib_chart_b64(pc_records, color_line='#f4d125', target_grade=target_grade, is_jpy=False)
+        c_sk = create_premium_matplotlib_chart_b64(snkr_target_records, color_line='#f4d125', target_grade=target_grade, is_jpy=True)
+        
+        pc_charts_html = f"""
+        <div class="w-full h-44 mb-10 flex items-center justify-center relative">
+            <div class="relative glass-panel rounded-xl border border-border-gold/30 p-2 w-full h-full">
+                <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-border-gold/50 px-3 py-1 rounded-full z-20 shadow-lg">Price Chart</span>
+                <img src="{c_pc}" class="w-full h-full object-contain mix-blend-screen" />
+            </div>
+        </div>"""
+        
+        pc_table_html = f"""
+                <div class="flex-1 glass-panel rounded-xl overflow-hidden p-3 border border-border-gold/30">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-border-gold/20 text-[10px] font-black uppercase tracking-widest text-primary-dark">
+                                <th class="p-3">Date (日期)</th>
+                                <th class="p-3">Grade (狀態)</th>
+                                <th class="p-3 text-right">Price (金額)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm divide-y divide-border-gold/10">
+                            {generate_table_rows(pc_records, is_jpy=False, target_grade=card_data.get('grade', ''))}
+                        </tbody>
+                    </table>
+                </div>"""
+        
+        snkr_charts_html = f"""
+        <div class="w-full h-44 mb-6 flex items-center justify-center">
+            <img src="{c_sk}" class="w-full h-full object-contain mix-blend-screen" />
+        </div>"""
+        
+        snkr_table_html = f"""
+                <div class="flex-1 glass-panel rounded-xl overflow-hidden p-3 border border-border-gold/30">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-border-gold/20 text-[10px] font-black uppercase tracking-widest text-primary-dark">
+                                <th class="p-3">Time (時間)</th>
+                                <th class="p-3">Grade (狀態)</th>
+                                <th class="p-3 text-right">Price (金額)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm divide-y divide-border-gold/10">
+                            {generate_table_rows(snkr_target_records, is_jpy=True)}
+                        </tbody>
+                    </table>
+                </div>"""
+                
+        tgt_prices = []
+        if pc_records:
+            tgt_prices.extend([float(r['price']) for r in pc_records if r.get('grade') == target_grade])
+        if snkr_target_records:
+            tgt_prices.extend([float(r['price']) / 150.0 for r in snkr_target_records])
+            
+        avg_tgt = sum(tgt_prices)/len(tgt_prices) if tgt_prices else 0
+        stat_1_t, stat_1_v = f"{target_grade} Avg (均價)", f"${avg_tgt:.2f}" if avg_tgt > 0 else "N/A"
+        # SAFETY CHECK for empty sequences
+        stat_2_t, stat_2_v = f"{target_grade} Min (最低)", f"${min(tgt_prices):.2f}" if tgt_prices else "N/A"
+        stat_3_t, stat_3_v = f"{target_grade} Max (最高)", f"${max(tgt_prices):.2f}" if tgt_prices else "N/A"
+        
+        stat_4_t, stat_4_v = f"Total Entries{days_span}", str(total_entries)
 
-    pc_charts_html = f"""
-    <div class="w-full flex flex-col gap-8 mb-4 mt-4">
-        <div class="relative glass-panel rounded-xl border border-green-500/40 p-2 shadow-[0_0_20px_rgba(34,197,94,0.15)]">
-            <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-green-500/50 px-3 py-1 rounded-full z-20 shadow-lg">PSA 10 Trend</span>
-            <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-green-500/50 z-20 shadow-lg">30d Vol: {v_pc_10} Set</span>
-            <img src="{c_pc_10}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
-        </div>
-        <div class="relative glass-panel rounded-xl border border-red-500/40 p-2 shadow-[0_0_20px_rgba(239,68,68,0.15)]">
-            <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-red-500/50 px-3 py-1 rounded-full z-20 shadow-lg">Ungraded Trend</span>
-            <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-red-500/50 z-20 shadow-lg">30d Vol: {v_pc_raw} Set</span>
-            <img src="{c_pc_raw}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
-        </div>
-    </div>"""
-    
-    snkr_charts_html = f"""
-    <div class="w-full flex flex-col gap-8 mb-4 mt-4">
-        <div class="relative glass-panel rounded-xl border border-green-500/40 p-2 shadow-[0_0_20px_rgba(34,197,94,0.15)]">
-            <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-green-500/50 px-3 py-1 rounded-full z-20 shadow-lg">PSA 10 Trend</span>
-            <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-green-500/50 z-20 shadow-lg">30d Vol: {v_sk_10} Set</span>
-            <img src="{c_sk_10}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
-        </div>
-        <div class="relative glass-panel rounded-xl border border-red-500/40 p-2 shadow-[0_0_20px_rgba(239,68,68,0.15)]">
-            <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-red-500/50 px-3 py-1 rounded-full z-20 shadow-lg">Ungraded Trend</span>
-            <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-red-500/50 z-20 shadow-lg">30d Vol: {v_sk_raw} Set</span>
-            <img src="{c_sk_raw}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
-        </div>
-    </div>"""
-
-    stat_1_t, stat_1_v = "PSA 10 Avg (完整品)", f"${avg_10:.2f}" if avg_10 > 0 else "N/A"
-    stat_2_t, stat_2_v = "Ungraded Avg (裸卡)", f"${avg_raw:.2f}" if avg_raw > 0 else "N/A"
-    stat_3_t, stat_3_v = "PSA 10 Max (最高成交價)", f"${max_10:.2f}" if max_10 > 0 else "N/A"
-    stat_4_t, stat_4_v = f"Total Entries{days_span}", str(total_entries)
-    
-    pc_table_html = ""
-    snkr_table_html = ""
-    
     replacements_2 = {
         "{{ card_name }}": name,
         "{{ card_set }}": card_data.get('set_code', ''),
