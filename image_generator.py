@@ -403,6 +403,10 @@ async def generate_report(card_data, snkr_records, pc_records, out_dir=None):
         except: pass
         return datetime.now()
 
+    def count_30_days(records_list, tgt_grade):
+        cutoff = datetime.now() - timedelta(days=30)
+        return len([r for r in (records_list or []) if r.get('grade') == tgt_grade and parse_d(r['date']) > cutoff])
+
     target_grade_1 = card_data.get('grade', 'Ungraded')
     recent_prices = []
     sixty_days_ago = datetime.now() - timedelta(days=60)
