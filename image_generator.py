@@ -9,10 +9,19 @@ from playwright.async_api import async_playwright
 import re
 import asyncio
 
-font_path = '/System/Library/Fonts/Supplemental/Arial Unicode.ttf'
-if os.path.exists(font_path):
-    fm.fontManager.addfont(font_path)
+# Font loading for different environments
+font_path_mac = '/System/Library/Fonts/Supplemental/Arial Unicode.ttf'
+font_path_local = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts', 'NotoSansCJK-Bold.ttc')
+
+if os.path.exists(font_path_local):
+    fm.fontManager.addfont(font_path_local)
+    font_prop = fm.FontProperties(fname=font_path_local)
+    plt.rcParams['font.family'] = font_prop.get_name()
+    print(f"✅ 使用本地字體: {font_path_local}")
+elif os.path.exists(font_path_mac):
+    fm.fontManager.addfont(font_path_mac)
     plt.rcParams['font.family'] = 'Arial Unicode MS'
+    print("✅ 使用系統字體: Arial Unicode MS")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
