@@ -178,26 +178,21 @@ def search_pricecharting(name, number, set_code, is_alt_art=False):
     lines = md_content.split('\n')
     records = []
     
-    date_regex = r'\|\s*(\d{4}-\d{2}-\d{2}|[A-Z][a-z]{2}\s\d{1,2},\s\d{4})\s*\|'
-    
+    # Parser 1: 嘗試原本的 Markdown Table 格式 (每行有 | 分隔)
+    date_regex_md = r'\|\s*(\d{4}-\d{2}-\d{2}|[A-Z][a-z]{2}\s\d{1,2},\s\d{4})\s*\|'
     for line in lines:
-        if re.search(date_regex, line):
+        if re.search(date_regex_md, line):
             parts = [p.strip() for p in line.split('|')]
             if len(parts) >= 5:
                 date_str = parts[1]
-                # Find all prices in the line; use the LAST one (the actual sale price)
-                # The $6/month subscribe fee may appear first in locked rows
                 all_prices = re.findall(r'\$([\d,]+\.\d{2})', line)
-                if not all_prices:
-                    continue
-                # Skip if only the subscribe fee ($6.00) found
+                if not all_prices: continue
                 real_prices = [p for p in all_prices if p not in ('6.00',)]
-                if not real_prices:
-                    continue
-                price_str = real_prices[-1]
-                price_usd = float(price_str.replace(',', ''))
+                if not real_prices: continue
                 
+                price_usd = float(real_prices[-1].replace(',', ''))
                 title_clean = line.replace(" ", "").lower()
+                
                 detected_grade = None
                 if "psa10" in title_clean:
                     detected_grade = "PSA 10"
@@ -206,8 +201,6 @@ def search_pricecharting(name, number, set_code, is_alt_art=False):
                 elif "psa8" in title_clean:
                     detected_grade = "PSA 8"
                 elif not re.search(r'(psa|bgs|cgc|grade|gem)', title_clean):
-                    # Ungraded: no grading company keywords
-                    # Note: 'mint' removed from exclusion since NM/Near Mint describes raw card condition
                     detected_grade = "Ungraded"
                         
                 if detected_grade:
@@ -217,7 +210,46 @@ def search_pricecharting(name, number, set_code, is_alt_art=False):
                         "grade": detected_grade
                     })
 
-    
+    # Parser 2: 嘗試 Jina 新版的 TSV 格式 (日期獨立一行，標題與價格在下一行)
+    # 只有在 Parser 1 抓不到資料時才啟動，作為 fallback 保底
+    if not records:
+        print("DEBUG: Markdown Table format parsing failed (0 records). Falling back to TSV state machine parser.")
+        current_date = None
+        date_regex_tsv = r'^(\d{4}-\d{2}-\d{2}|[A-Z][a-z]{2}\s\d{1,2},\s\d{4})'
+        
+        for line in lines:
+            line = line.strip()
+            date_match = re.match(date_regex_tsv, line)
+            if date_match:
+                current_date = date_match.group(1)
+                continue
+                
+            if current_date and "$" in line:
+                all_prices = re.findall(r'\$([\d,]+\.\d{2})', line)
+                if not all_prices: continue
+                real_prices = [p for p in all_prices if p not in ('6.00',)]
+                if not real_prices: continue
+                
+                price_usd = float(real_prices[-1].replace(',', ''))
+                title_clean = line.replace(" ", "").lower()
+                
+                detected_grade = None
+                if "psa10" in title_clean:
+                    detected_grade = "PSA 10"
+                elif "psa9" in title_clean:
+                    detected_grade = "PSA 9"
+                elif "psa8" in title_clean:
+                    detected_grade = "PSA 8"
+                elif not re.search(r'(psa|bgs|cgc|grade|gem)', title_clean):
+                    detected_grade = "Ungraded"
+                        
+                if detected_grade:
+                    records.append({
+                        "date": current_date,
+                        "price": price_usd,
+                        "grade": detected_grade
+                    })
+                    current_date = None # Reset 狀態機，避免錯位
     # Also parse the PC bottom summary prices (e.g. "Ungraded$33.46", "PSA 10$125.00")
     # These are summary/avg prices shown at the bottom of the page
     from datetime import datetime
