@@ -329,8 +329,12 @@ def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
     # SNKRDUNK search is highly accurate with Set Code (e.g. "ピカチュウ S8a-G", "ピカチュウ SV-P")
     if set_code and jp_name:
         terms_to_try.append(f"{jp_name} {set_code}")
+        if "-" in set_code:
+            terms_to_try.append(f"{jp_name} {set_code.replace('-', '')}")
     if set_code:
         terms_to_try.append(f"{en_name} {set_code}")
+        if "-" in set_code:
+            terms_to_try.append(f"{en_name} {set_code.replace('-', '')}")
         
     if jp_name:
         terms_to_try.extend([
@@ -476,8 +480,8 @@ async def analyze_image_with_minimax(image_path, api_key):
 你是一位於寶可夢卡牌 (Pokemon TCG) 領域專精的鑑定與估價專家。請分析這張卡片圖片，並精準提取以下 13 個欄位的資訊：
 {
   "name": "英文名稱 (必填，例如 Venusaur ex 或 Lillie 等)",
-  "set_code": "系列代號 (選填，位於卡牌左下或右下角，如 SV1a, S8a-G, SV-P, 151 等。如果沒有印則留空字串)",
-  "number": "卡片編號 (必填，請提取「完整」字串，包含斜線與前後文字，絕度不要自己去除 0！例如 001/015, 004/SV-P, 114/100, 077/067 等)",
+  "set_code": "系列代號 (選填，位於卡牌左下或右下角，如 SV1a, S8a-G, SM-P, 151 等。如果沒有印則留空字串)",
+  "number": "卡片編號 (必填，請提取「完整」字串，包含斜線與前後文字，絕度不要自己去除 0！例如 001/015, 004/SM-P, 114/100, 077/067 等)",
   "grade": "卡片等級 (必填，如果有PSA/BGS等鑑定盒，印有10就填如 PSA 10, 否則如果是裸卡就填 Ungraded)",
   "jp_name": "日文名稱 (選填，沒有請留空字串)",
   "c_name": "中文名稱 (選填，沒有請留空字串)",
