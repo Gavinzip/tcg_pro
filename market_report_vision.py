@@ -523,7 +523,7 @@ async def main():
         print(f"==================================================")
         await process_single_image(img_path, api_key, args.out_dir)
 
-async def process_single_image(image_path, api_key, out_dir=None):
+async def process_single_image(image_path, api_key, out_dir=None, stream_mode=False):
     if not os.path.exists(image_path):
         print(f"❌ Error: 找不到圖片檔案 -> {image_path}", force=True)
         return
@@ -698,12 +698,37 @@ async def process_single_image(image_path, api_key, out_dir=None):
             json.dump(data_dump, f, ensure_ascii=False, indent=2)
             
         # Generate the two separate HTML-based posters (Now with FULL history)
-        out_paths = await image_generator.generate_report(card_info, snkr_records, pc_records, out_dir=final_dest_dir)
-        
-        return (final_report, out_paths)
+        if stream_mode:
+            # ℹ️ Stream Mode：不在這裡等待海報生成，回傳文字報告 + 海報生成所需的資料
+            # Bot 收到後會先傳送文字報告，再呼叫 generate_posters() 生成海報
+            poster_data = {
+                "card_info": card_info,
+                "snkr_records": snkr_records,
+                "pc_records": pc_records,
+                "out_dir": final_dest_dir,
+            }
+            return (final_report, poster_data)
+        else:
+            out_paths = await image_generator.generate_report(card_info, snkr_records, pc_records, out_dir=final_dest_dir)
+            return (final_report, out_paths)
         
     return final_report
 
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
+
+async def generate_posters(poster_data):
+    """
+    將 process_single_image(stream_mode=True) 回傳的 poster_data dict
+    傳入，生成 profile + data 兩張海報並回傳路徑清單。
+    
+    Bot 用法（在傳完文字報告之後呼叫）：
+        out_paths = await market_report_vision.generate_posters(poster_data)
+    """
+    return await image_generator.generate_report(
+        poster_data["card_info"],
+        poster_data["snkr_records"],
+        poster_data["pc_records"],
+        out_dir=poster_data["out_dir"],
+    )

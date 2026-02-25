@@ -1,26 +1,32 @@
 #!/usr/bin/env python3
 import discord
 import os
+import shutil
 import tempfile
 import threading
 import asyncio
 import traceback
+import sys
 import market_report_vision
 from dotenv import load_dotenv
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-def smart_split(text, limit=1900):
-    chunks = []
-    current_chunk = ""
-    for line in text.split('\n'):
-        if len(current_chunk) + len(line) + 1 > limit:
-            chunks.append(current_chunk)
-            current_chunk = line + "\n"
-        else:
-            current_chunk += line + "\n"
-    if current_chunk:
-        chunks.append(current_chunk.strip())
-    return chunks
+# ============================================================
+# ⚠️ JINA AI RATE LIMITER 說明（重要！請勿刪除此說明）
+# ============================================================
+# market_report_vision.py 內部的 fetch_jina_markdown() 函數使用了一個
+# 全域的 sliding window rate limiter：
+#   - _jina_requests_queue: 記錄最近60秒內的請求時間戳
+#   - _jina_lock: threading.Lock，確保多執行緒安全
+#   - 限制：18 requests / 60 seconds（留兩次緩衝給 Jina 每分鐘20次的限額）
+#
+# 在併發情境下（多個用戶同時送圖），rate limiter 依然有效，因為：
+# 1. Python module 是 singleton，所有 task 共用同一份 _jina_requests_queue
+# 2. _jina_lock 是 threading.Lock，在 tasks 跑的 executor threads 中也是 thread-safe 的
+# 3. 超過限額的 task 會自動 sleep 等待，不會炸掉 Jina
+#
+# 每次分析一張卡約會用掉 4~8 次 Jina 請求（PC: 2~3次, SNKRDUNK: 2~5次）
+# ============================================================
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -29,112 +35,133 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"OK")
     def log_message(self, format, *args):
-        pass # 安靜模式，不要在終端機一直洗版
+        pass  # 安靜模式
 
 def run_health_server():
     server = HTTPServer(('0.0.0.0', 8080), HealthCheckHandler)
     server.serve_forever()
 
-# 載入環境變數 (確保你在 .env 中加入了 DISCORD_BOT_TOKEN=你的機器人Token)
 load_dotenv()
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 
 intents = discord.Intents.default()
-# 必須開啟 message_content intent 才能讀取訊息與附件
 intents.message_content = True
 client = discord.Client(intents=intents)
+
+
+def smart_split(text, limit=1900):
+    chunks = []
+    current_chunk = ""
+    for line in text.split('\n'):
+        if len(current_chunk) + len(line) + 1 > limit:
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+            current_chunk = line + "\n"
+        else:
+            current_chunk += line + "\n"
+    if current_chunk.strip():
+        chunks.append(current_chunk.strip())
+    return chunks
+
+
+async def handle_image(attachment, message):
+    """
+    ** 並發核心函數（stream 模式）**
+
+    流程：
+    1. 建立討論串
+    2. 下載圖片
+    3. AI 分析 + 爬蟲 → 立即傳送文字報告
+    4. （非同步）生成海報 → 生成完成後補傳
+
+    這樣使用者不需要等海報生成完才看到文字報告。
+    """
+    # 1. 立刻回覆並建立討論串
+    reply_msg = await message.reply(f"🔍 收到圖片：**{attachment.filename}**，分析中...")
+    thread = await reply_msg.create_thread(name="卡片分析報表", auto_archive_duration=60)
+
+    # 2. 建立暫存資料夾（海報存這裡）
+    card_out_dir = tempfile.mkdtemp(prefix=f"tcg_bot_{message.id}_")
+    img_path = os.path.join(card_out_dir, attachment.filename)
+    await attachment.save(img_path)
+
+    try:
+        print(f"⚙️ [並發] 開始分析: {attachment.filename} (來自 {message.author})")
+
+        market_report_vision.REPORT_ONLY = True
+        api_key = os.getenv("MINIMAX_API_KEY")
+
+        # 3. 使用 stream_mode=True：
+        #    process_single_image 拿到文字報告後立即回傳，
+        #    不等海報生成（海報生成約需額外 10~20 秒）
+        result = await market_report_vision.process_single_image(
+            img_path, api_key, out_dir=card_out_dir, stream_mode=True
+        )
+
+        if isinstance(result, tuple):
+            report_text, poster_data = result
+        else:
+            report_text = result
+            poster_data = None
+
+        # 4. 立即傳送文字報告（不等海報）
+        if report_text:
+            if report_text.startswith("❌"):
+                await thread.send(report_text)
+            else:
+                for chunk in smart_split(report_text):
+                    await thread.send(chunk)
+        else:
+            await thread.send("❌ 分析失敗：未發現卡片資訊或發生未知錯誤。")
+            return
+
+        # 5. 生成海報（等文字報告傳出後才開始）
+        #    使用者此時已經可以看到文字報告，海報生成完再補傳
+        if poster_data:
+            await thread.send("🖼️ 海報生成中，請稍候...")
+            try:
+                out_paths = await market_report_vision.generate_posters(poster_data)
+                if out_paths:
+                    for path in out_paths:
+                        if os.path.exists(path):
+                            await thread.send(file=discord.File(path))
+                else:
+                    await thread.send("⚠️ 海報生成失敗，但文字報告已完成。")
+            except Exception as poster_err:
+                await thread.send(f"⚠️ 海報生成時發生錯誤：{poster_err}")
+
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print(f"❌ 分析失敗 ({attachment.filename}): {e}", file=sys.stderr)
+        await thread.send(
+            f"❌ 執行 Python 腳本時發生系統異常：\n```python\n{error_trace[-1900:]}\n```"
+        )
+
+    finally:
+        shutil.rmtree(card_out_dir, ignore_errors=True)
+        print(f"✅ [並發] 完成並清理: {attachment.filename}")
+
 
 @client.event
 async def on_ready():
     print(f'✅ 機器人已成功登入為 {client.user}')
-    print(f'📂 已成功載入 market_report_vision 模組')
 
 @client.event
 async def on_message(message):
-    # 避免機器人自己回覆自己
     if message.author == client.user:
         return
 
-    # 檢查是否有人傳了檔案，且「同時有 Tag (提及) 機器人」
     if client.user in message.mentions and message.attachments:
         for attachment in message.attachments:
-            # 簡單過濾，只處理副檔名是圖片的檔案
             if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.webp']):
-                
-                # 1. 用「引用回覆」(replyTo) 傳送初始訊息
-                reply_msg = await message.reply("🔍 收到圖片")
-                
-                # 2. 對這則回覆建立專屬的討論串
-                thread = await reply_msg.create_thread(name=f"卡片分析報表", auto_archive_duration=60)
+                # 每張圖各自建立獨立並發 Task
+                asyncio.create_task(handle_image(attachment, message))
 
-                # 3. 將 discord 上的圖片下載到本機暫存區
-                temp_dir = tempfile.gettempdir()
-                req_id = f"{message.id}_{attachment.id}"
-                img_path = os.path.join(temp_dir, f"{req_id}_{attachment.filename}")
-                await attachment.save(img_path)
-                
-                # Create a temporary output dir for this card's report files
-                report_out_dir = os.path.join(temp_dir, f"report_{req_id}")
-                os.makedirs(report_out_dir, exist_ok=True)
-                
-                try:
-                    # 使用智慧異步處理優化的模組，支援瀏覽器複用與併發控制
-                    print(f"⚙️ 開始異步分析圖片: {img_path}")
-                    market_report_vision.REPORT_ONLY = True
-                    api_key = os.getenv("MINIMAX_API_KEY")
-                    
-                    # 取代 asyncio.to_thread，直接 await 異步版模組
-                    result = await market_report_vision.process_single_image(
-                        img_path, api_key, out_dir=report_out_dir
-                    )
-                    
-                    report_text = ""
-                    out_images = []
-                    if isinstance(result, tuple):
-                        report_text, out_images = result
-                    else:
-                        report_text = result
-                    
-                    if report_text:
-                        # 5. 成功拿到純淨的 Markdown 報表或內建的錯誤字串
-                        if report_text.startswith("❌"):
-                            await thread.send(report_text)
-                        else:
-                            # 傳送報表檔案 (如果有產生的話)
-                            files = []
-                            for img_f in out_images:
-                                if os.path.exists(img_f):
-                                    files.append(discord.File(img_f))
-                            
-                            if len(report_text) > 1900:
-                                chunks = smart_split(report_text)
-                                for i, chunk in enumerate(chunks):
-                                    # 只在最後一個分段附加圖片
-                                    if i == len(chunks) - 1:
-                                        await thread.send(chunk, files=files)
-                                    else:
-                                        await thread.send(chunk)
-                            else:
-                                await thread.send(report_text, files=files)
-                    else:
-                         await thread.send("❌ 分析失敗，未發現卡片資訊或發生未知錯誤。")
-
-                except Exception as e:
-                    error_trace = traceback.format_exc()
-                    await thread.send(f"❌ 執行 Python 腳本時發生系統異常：\n```python\n{error_trace[-1900:]}\n```")
-                    
-                finally:
-                    # 6. 處理完畢，清理所有暫存檔案與資料夾
-                    if os.path.exists(img_path): os.remove(img_path)
-                    if os.path.exists(report_out_dir):
-                        import shutil
-                        shutil.rmtree(report_out_dir)
 
 if __name__ == "__main__":
     if not TOKEN:
-        print("❌ 錯誤：找不到 DISCORD_BOT_TOKEN。請確保你在 '.env' 檔案中設定了它！")
+        print("❌ 錯誤：找不到 DISCORD_BOT_TOKEN。")
     else:
-        # 在背景啟動一個迷你伺服器，專門用來應付 Zeabur 的 8080 port 健康檢查！
         threading.Thread(target=run_health_server, daemon=True).start()
         print("啟動中...")
         client.run(TOKEN)
