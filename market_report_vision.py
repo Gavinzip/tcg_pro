@@ -256,6 +256,7 @@ def search_pricecharting(name, number, set_code, is_alt_art=False):
     # Jina renders it as: ![Image N: ...](https://product-images.s3.amazonaws.com/...)
     pc_img_url = None
     img_patterns = [
+        r'!\[.*?\]\((https://storage\.googleapis\.com/images\.pricecharting\.com/[^/)]+/\d+\.jpg)\)',
         r'!\[.*?\]\((https://product-images\.s3\.amazonaws\.com/[^\)]+)\)',
         r'!\[.*?\]\((https://[^)]+\.jpg[^\)]*)\)',
         r'!\[.*?\]\((https://[^)]+\.png[^\)]*)\)',
@@ -265,7 +266,19 @@ def search_pricecharting(name, number, set_code, is_alt_art=False):
         m = re.search(pat, md_content)
         if m:
             pc_img_url = m.group(1)
-            print(f"DEBUG: Found PC card image: {pc_img_url}")
+            print(f"DEBUG: Found PC card image (original): {pc_img_url}")
+            # Upgrade to 1600px high-res version for storage.googleapis.com/images.pricecharting.com
+            hiRes_url = re.sub(r'/([\d]+)\.jpg$', '/1600.jpg', pc_img_url)
+            if hiRes_url != pc_img_url:
+                try:
+                    test_resp = requests.head(hiRes_url, timeout=5)
+                    if test_resp.status_code == 200:
+                        pc_img_url = hiRes_url
+                        print(f"DEBUG: Upgraded to 1600px PC image: {pc_img_url}")
+                    else:
+                        print(f"DEBUG: 1600px not available (HTTP {test_resp.status_code}), using original")
+                except Exception as e:
+                    print(f"DEBUG: Failed to check 1600px URL: {e}, using original")
             break
     
     return records, resolved_url, pc_img_url
