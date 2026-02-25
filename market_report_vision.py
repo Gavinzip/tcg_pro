@@ -97,7 +97,7 @@ def extract_price(price_str):
     except:
         return 0.0
 
-def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False):
+def search_pricecharting(name, number, set_code, is_alt_art=False):
     # Strip prefix like "No." (e.g. "No.025" -> "25"), then apply lstrip('0')
     _num_raw = number.split('/')[0]
     _digits_only = re.search(r'\d+', _num_raw)
@@ -208,24 +208,11 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False)
                     detected_grade = "Ungraded"
                         
                 if detected_grade:
-                    # Filter by target_grade
-                    grade_clean = target_grade.replace(" ", "").lower()
-                    title_clean_for_filter = line.replace(" ", "").lower()
-                    
-                    grade_matched = False
-                    if grade_clean == "ungraded":
-                        if not re.search(r'(psa|bgs|cgc|grade)', title_clean_for_filter):
-                            grade_matched = True
-                    else:
-                        if grade_clean in title_clean_for_filter:
-                            grade_matched = True
-                            
-                    if grade_matched:
-                        records.append({
-                            "date": date_str,
-                            "price": price_usd,
-                            "grade": target_grade
-                        })
+                    records.append({
+                        "date": date_str,
+                        "price": price_usd,
+                        "grade": detected_grade
+                    })
 
     # Parser 2: 嘗試 Jina 新版的 TSV 格式 (日期獨立一行，標題與價格在下一行)
     # 只有在 Parser 1 抓不到資料時才啟動，作為 fallback 保底
@@ -261,25 +248,12 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False)
                     detected_grade = "Ungraded"
                         
                 if detected_grade:
-                    # Filter by target_grade
-                    grade_clean = target_grade.replace(" ", "").lower()
-                    title_clean_for_filter = line.replace(" ", "").lower()
-                    
-                    grade_matched = False
-                    if grade_clean == "ungraded":
-                        if not re.search(r'(psa|bgs|cgc|grade)', title_clean_for_filter):
-                            grade_matched = True
-                    else:
-                        if grade_clean in title_clean_for_filter:
-                            grade_matched = True
-                            
-                    if grade_matched:
-                        records.append({
-                            "date": current_date,
-                            "price": price_usd,
-                            "grade": target_grade
-                        })
-                        current_date = None # Reset 狀態機，避免錯位
+                    records.append({
+                        "date": current_date,
+                        "price": price_usd,
+                        "grade": detected_grade
+                    })
+                    current_date = None # Reset 狀態機，避免錯位
     # Also parse the PC bottom summary prices (e.g. "Ungraded$33.46", "PSA 10$125.00")
     # These are summary/avg prices shown at the bottom of the page
     from datetime import datetime
@@ -346,7 +320,7 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False)
     return records, resolved_url, pc_img_url
 
 
-def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art=False):
+def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
     # Strip prefix like "No." (e.g. "No.025" -> "25"), then apply lstrip('0')
     _num_raw = number.split('/')[0]
     _digits_only = re.search(r'\d+', _num_raw)
@@ -472,12 +446,12 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
                     break
                     
             if grade_found and price_jpy > 0:
-                snkr_target_grade = "A" if target_grade.lower() == "ungraded" else target_grade
-                if snkr_target_grade.replace(" ", "").lower() == grade_found.replace(" ", "").lower():
+                parsed_grade = grade_found.strip()
+                if parsed_grade:
                     records.append({
                         "date": date_found,
                         "price": price_jpy,
-                        "grade": snkr_target_grade
+                        "grade": parsed_grade
                     })
                 
     resolved_url = f"https://snkrdunk.com/apparels/{product_id}" if product_id else None
@@ -662,8 +636,8 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     print(f"🌐 正在從網路(PC & SNKRDUNK)抓取市場行情 (異圖/特殊版: {is_alt_art})...")
     loop = asyncio.get_running_loop()
     pc_result, snkr_result = await asyncio.gather(
-        loop.run_in_executor(None, search_pricecharting, name, number, set_code, grade, is_alt_art),
-        loop.run_in_executor(None, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art),
+        loop.run_in_executor(None, search_pricecharting, name, number, set_code, is_alt_art),
+        loop.run_in_executor(None, search_snkrdunk, name, jp_name, number, set_code, is_alt_art),
     )
 
     pc_records = pc_result[0] if pc_result else None
@@ -683,6 +657,18 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     
     # 第三階段：產生 Markdown 報告
     
+    # --- 重要：過濾文字報告專用的成交紀錄 ---
+    # 海報製作需要完整 records (含 PSA 10, 9, Ungraded)，但文字報告只需目標等級
+    report_pc_records = [r for r in (pc_records or []) if r.get('grade') == grade]
+    
+    if '10' in grade:
+        valid_snkr_grades = ['S', 'PSA10', 'PSA 10']
+    elif grade.lower() == 'ungraded':
+        valid_snkr_grades = ['A']
+    else:
+        valid_snkr_grades = [grade, grade.replace(' ', '')]
+    report_snkr_records = [r for r in (snkr_records or []) if r.get('grade') in valid_snkr_grades]
+
     c_name_display = c_name if c_name else jp_name if jp_name else name
     
     # =====================================================
@@ -743,12 +729,12 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
         cutoff = datetime.now() - timedelta(days=30)
         return len([r for r in (records_list or []) if r.get('grade') == tgt_grade and (await _parse_d(r['date'])) > cutoff])
     if pc_records:
-        pc_target_records = [r for r in pc_records if r['grade'] == grade]
-        if pc_target_records:
-            for r in pc_target_records[:10]:
+        if report_pc_records:
+            for r in report_pc_records[:10]:
                 state_label = "Grade" if lang == "en" else "狀態"
                 report_lines.append(f"📅 {r['date']}      💰 ${r['price']:.2f} USD      📝 {state_label}：{r['grade']}")
-            prices = [r['price'] for r in pc_target_records]
+            
+            prices = [r['price'] for r in report_pc_records]
             report_lines.append("📊 Statistics" if lang == "en" else "📊 統計資料")
             report_lines.append(f"　💰 {'Highest':}: ${max(prices):.2f} USD" if lang == "en" else f"　💰 最高成交價：${max(prices):.2f} USD")
             report_lines.append(f"　💰 {'Lowest':}: ${min(prices):.2f} USD" if lang == "en" else f"　💰 最低成交價：${min(prices):.2f} USD")
@@ -767,19 +753,17 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
             valid_snkr_grades = ['S', 'PSA10', 'PSA 10']
             target_disp = 'S (PSA 10)'
         elif grade.lower() == 'ungraded':
-            valid_snkr_grades = ['A']
             target_disp = 'A (Raw)'
         else:
-            valid_snkr_grades = [grade, grade.replace(' ', '')]
             target_disp = grade
             
-        snkr_target_records = [r for r in snkr_records if r['grade'] in valid_snkr_grades]
-        if snkr_target_records:
-            for r in snkr_target_records[:10]:
+        # snkr_target_records is now report_snkr_records
+        if report_snkr_records:
+            for r in report_snkr_records[:10]:
                 usd_price = r['price'] / jpy_rate
                 state_label = "Grade" if lang == "en" else "狀態"
                 report_lines.append(f"📅 {r['date']}      💰 ¥{int(r['price']):,} (~${usd_price:.0f} USD)      📝 {state_label}：{r['grade']}")
-            prices = [r['price'] for r in snkr_target_records]
+            prices = [r['price'] for r in report_snkr_records] # Changed from snkr_target_records to report_snkr_records
             avg_price = sum(prices)/len(prices)
             report_lines.append("📊 Statistics" if lang == "en" else "📊 統計資料")
             report_lines.append(f"　💰 {'Highest':}: ¥{int(max(prices)):,} (~${max(prices)/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 最高成交價：¥{int(max(prices)):,} (~${max(prices)/jpy_rate:.0f} USD)")
