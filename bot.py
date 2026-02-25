@@ -64,38 +64,88 @@ def smart_split(text, limit=1900):
     return chunks
 
 
+class LangSelectView(discord.ui.View):
+    """
+    語言選擇按鈕 View。
+    當使用者點選後，設定 chosen_lang 並喚醒等待中的 Event。
+    """
+    def __init__(self):
+        super().__init__(timeout=60)  # 60 秒未點選自動超時
+        self.chosen_lang = None
+        self._event = asyncio.Event()
+
+    @discord.ui.button(label="🇹🇼  中文", style=discord.ButtonStyle.primary, custom_id="lang_zh")
+    async def choose_zh(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.chosen_lang = "zh"
+        self._event.set()
+        await interaction.response.edit_message(
+            content="✅ 已選擇**中文**，報告生成中...",
+            view=None
+        )
+
+    @discord.ui.button(label="🇺🇸  English", style=discord.ButtonStyle.secondary, custom_id="lang_en")
+    async def choose_en(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.chosen_lang = "en"
+        self._event.set()
+        await interaction.response.edit_message(
+            content="✅ **English** selected, generating report...",
+            view=None
+        )
+
+    async def wait_for_choice(self) -> str | None:
+        """等待使用者點選按鈕，回傳 'zh' | 'en' | None（逾時）"""
+        try:
+            await asyncio.wait_for(self._event.wait(), timeout=60)
+            return self.chosen_lang
+        except asyncio.TimeoutError:
+            return None
+
+
 async def handle_image(attachment, message):
     """
-    ** 並發核心函數（stream 模式）**
+    ** 並發核心函數（stream 模式 + 語言選擇）**
 
     流程：
-    1. 建立討論串
-    2. 下載圖片
-    3. AI 分析 + 爬蟲 → 立即傳送文字報告
-    4. （非同步）生成海報 → 生成完成後補傳
-
-    這樣使用者不需要等海報生成完才看到文字報告。
+    1. 詢問使用者選擇語言（中文 / English）
+    2. 建立討論串
+    3. 下載圖片
+    4. AI 分析 + 爬蟲 → 立即傳送文字報告
+    5. （非同步）生成海報 → 生成完成後補傳
     """
-    # 1. 立刻回覆並建立討論串
-    reply_msg = await message.reply(f"🔍 收到圖片：**{attachment.filename}**，分析中...")
-    thread = await reply_msg.create_thread(name="卡片分析報表", auto_archive_duration=60)
+    # 1. 先詢問語言
+    lang_view = LangSelectView()
+    lang_msg = await message.reply(
+        f"🃏 收到圖片：**{attachment.filename}**\n請選擇報告語言 / Please select report language：",
+        view=lang_view
+    )
 
-    # 2. 建立暫存資料夾（海報存這裡）
+    lang = await lang_view.wait_for_choice()
+
+    if lang is None:
+        # 逾時未選擇
+        await lang_msg.edit(
+            content="⏰ 語言選擇逾時，已自動使用中文。Card language selection timed out, defaulting to Chinese.",
+            view=None
+        )
+        lang = "zh"
+
+    # 2. 建立討論串
+    thread_name = "Card Analysis Report" if lang == "en" else "卡片分析報表"
+    thread = await lang_msg.create_thread(name=thread_name, auto_archive_duration=60)
+
+    # 3. 建立暫存資料夾（海報存這裡）
     card_out_dir = tempfile.mkdtemp(prefix=f"tcg_bot_{message.id}_")
     img_path = os.path.join(card_out_dir, attachment.filename)
     await attachment.save(img_path)
 
     try:
-        print(f"⚙️ [並發] 開始分析: {attachment.filename} (來自 {message.author})")
+        print(f"⚙️ [並發] 開始分析: {attachment.filename} (lang={lang}, 來自 {message.author})")
 
         market_report_vision.REPORT_ONLY = True
         api_key = os.getenv("MINIMAX_API_KEY")
 
-        # 3. 使用 stream_mode=True：
-        #    process_single_image 拿到文字報告後立即回傳，
-        #    不等海報生成（海報生成約需額外 10~20 秒）
         result = await market_report_vision.process_single_image(
-            img_path, api_key, out_dir=card_out_dir, stream_mode=True
+            img_path, api_key, out_dir=card_out_dir, stream_mode=True, lang=lang
         )
 
         if isinstance(result, tuple):
@@ -104,7 +154,7 @@ async def handle_image(attachment, message):
             report_text = result
             poster_data = None
 
-        # 4. 立即傳送文字報告（不等海報）
+        # 4. 立即傳送文字報告
         if report_text:
             if report_text.startswith("❌"):
                 await thread.send(report_text)
@@ -112,13 +162,14 @@ async def handle_image(attachment, message):
                 for chunk in smart_split(report_text):
                     await thread.send(chunk)
         else:
-            await thread.send("❌ 分析失敗：未發現卡片資訊或發生未知錯誤。")
+            err_msg = "❌ Analysis failed: No card info found or unknown error." if lang == "en" else "❌ 分析失敗：未發現卡片資訊或發生未知錯誤。"
+            await thread.send(err_msg)
             return
 
-        # 5. 生成海報（等文字報告傳出後才開始）
-        #    使用者此時已經可以看到文字報告，海報生成完再補傳
+        # 5. 生成海報
         if poster_data:
-            await thread.send("🖼️ 海報生成中，請稍候...")
+            wait_msg = "🖼️ Generating poster, please wait..." if lang == "en" else "🖼️ 海報生成中，請稍候..."
+            await thread.send(wait_msg)
             try:
                 out_paths = await market_report_vision.generate_posters(poster_data)
                 if out_paths:
@@ -126,15 +177,17 @@ async def handle_image(attachment, message):
                         if os.path.exists(path):
                             await thread.send(file=discord.File(path))
                 else:
-                    await thread.send("⚠️ 海報生成失敗，但文字報告已完成。")
+                    fail_msg = "⚠️ Poster generation failed, but the text report is complete." if lang == "en" else "⚠️ 海報生成失敗，但文字報告已完成。"
+                    await thread.send(fail_msg)
             except Exception as poster_err:
-                await thread.send(f"⚠️ 海報生成時發生錯誤：{poster_err}")
+                err_msg = f"⚠️ Poster generation error: {poster_err}" if lang == "en" else f"⚠️ 海報生成時發生錯誤：{poster_err}"
+                await thread.send(err_msg)
 
     except Exception as e:
         error_trace = traceback.format_exc()
         print(f"❌ 分析失敗 ({attachment.filename}): {e}", file=sys.stderr)
         await thread.send(
-            f"❌ 執行 Python 腳本時發生系統異常：\n```python\n{error_trace[-1900:]}\n```"
+            f"❌ System error:\n```python\n{error_trace[-1900:]}\n```"
         )
 
     finally:
