@@ -419,7 +419,7 @@ def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
                 
     return records, img_url, resolved_url
 
-def analyze_image_with_minimax(image_path, api_key):
+async def analyze_image_with_minimax(image_path, api_key):
     # 清理 API Key，避免複製貼上時混入隱藏的換行或特殊字元 (\u2028 等) 導致 \u2028 latin-1 編碼錯誤
     api_key = api_key.strip().replace('\u2028', '').replace('\n', '').replace('\r', '')
     # Determine MIME type
@@ -467,16 +467,28 @@ def analyze_image_with_minimax(image_path, api_key):
     print("--------------------------------------------------")
     print(f"👁️‍🗨️ [Minimax Vision AI] 正在解析卡片影像: {image_path}...")
     
-    for attempt in range(3):
-        try:
-            response = requests.post(url, headers=headers, json=payload, timeout=60)
-            response.raise_for_status()
-            break
-        except requests.exceptions.RequestException as e:
-            print(f"⚠️ Minimax API 網路錯誤 (嘗試 {attempt+1}/3): {e}")
-            if attempt == 2:
-                return {}
-            time.sleep(2)
+    # ⚠️ requests.post 是阻塞呼叫，包在 run_in_executor 中讓 event loop 不被 block
+    # 其他並發中的 Task 可以在這段等待時繼續執行
+    loop = asyncio.get_running_loop()
+
+    def _do_minimax_post():
+        for attempt in range(3):
+            try:
+                response = requests.post(url, headers=headers, json=payload, timeout=60)
+                response.raise_for_status()
+                return response
+            except requests.exceptions.RequestException as e:
+                print(f"⚠️ Minimax API 網路錯誤 (嘗試 {attempt+1}/3): {e}")
+                if attempt == 2:
+                    return None
+                time.sleep(2)
+        return None
+
+    response = await loop.run_in_executor(None, _do_minimax_post)
+
+    if response is None:
+        print(f"❌ Minimax API 請求失敗，已重試 3 次")
+        return None
     if response.status_code != 200:
         print(f"API Error: 請求失敗 ({response.status_code})\n{response.text}")
         return None
@@ -528,8 +540,8 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
         print(f"❌ Error: 找不到圖片檔案 -> {image_path}", force=True)
         return
         
-    # 第一階段：透過大模型辨識圖片資訊
-    card_info = analyze_image_with_minimax(image_path, api_key)
+    # 第一階段：透過大模型辨識圖片資訊（非阻塞）
+    card_info = await analyze_image_with_minimax(image_path, api_key)
     
     if not card_info:
         print("❌ 卡片影像辨識失敗，中止處理此圖片。", force=True)
@@ -552,22 +564,28 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     is_alt_art = card_info.get("is_alt_art", False)
     
     # 第二階段：執行爬蟲抓取資料
+    # ⚠️ 並發關鍵：search_pricecharting 和 search_snkrdunk 都是同步阻塞函數，
+    # 用 run_in_executor 把它們丟到 thread pool，再用 asyncio.gather 同時等待兩者完成。
+    # 等待期間 event loop 不被 block，其他用戶的 Task 可以開始跑 Minimax 分析。
+    #
+    # Rate Limiter 安全說明：
+    # fetch_jina_markdown 內的 _jina_lock (threading.Lock) + _jina_requests_queue 是
+    # module-level 全域變數，所有 thread 共用同一份，thread-safe 排隊機制依然完整生效。
     print("--------------------------------------------------")
     print(f"🌐 正在從網路(PC & SNKRDUNK)抓取市場行情 (異圖/特殊版: {is_alt_art})...")
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_pc = executor.submit(search_pricecharting, name, number, set_code, is_alt_art)
-        future_snkr = executor.submit(search_snkrdunk, name, jp_name, number, set_code, is_alt_art)
-        
-        pc_result = future_pc.result()
-        snkr_result = future_snkr.result()
-        
-        pc_records = pc_result[0] if pc_result else None
-        pc_url = pc_result[1] if pc_result else None
-        pc_img_url = pc_result[2] if pc_result and len(pc_result) > 2 else None
-        
-        snkr_records = snkr_result[0] if snkr_result else None
-        img_url = snkr_result[1] if snkr_result else None
-        snkr_url = snkr_result[2] if snkr_result else None
+    loop = asyncio.get_running_loop()
+    pc_result, snkr_result = await asyncio.gather(
+        loop.run_in_executor(None, search_pricecharting, name, number, set_code, is_alt_art),
+        loop.run_in_executor(None, search_snkrdunk, name, jp_name, number, set_code, is_alt_art),
+    )
+
+    pc_records = pc_result[0] if pc_result else None
+    pc_url = pc_result[1] if pc_result else None
+    pc_img_url = pc_result[2] if pc_result and len(pc_result) > 2 else None
+
+    snkr_records = snkr_result[0] if snkr_result else None
+    img_url = snkr_result[1] if snkr_result else None
+    snkr_url = snkr_result[2] if snkr_result else None
     
     # Fallback: if SNKRDUNK has no image, use PriceCharting image
     if not img_url and pc_img_url:
