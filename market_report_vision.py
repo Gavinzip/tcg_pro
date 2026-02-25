@@ -146,9 +146,9 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False)
                 valid_urls.append(u)
             # 3. Check if number strictly matches (Fallback)
             elif re.search(rf'(?<!\d){number_clean}(?!\d)', u_end):
-                # If we have a set code, we want that in there too
-                if not set_code or set_code.lower().replace('-', '') in u_end.replace('-', ''):
-                    valid_urls.append(u)
+                # We still consider this a valid URL even if set_code isn't in it,
+                # but we'll try to match it if it's there.
+                valid_urls.append(u)
                 
         if not valid_urls:
             print(f"DEBUG: No PC product URL stringently matched the card name '{name}' or number '{number_clean}'.")
@@ -403,9 +403,8 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
             # SNKRDUNK always pads Pokemon/One Piece numbers to at least 3 digits
             # We strictly enforce the padded number to prevent matching Jina listing indices (e.g. " 4 Pikachu")
             if number_padded in title_clean or f"{number_clean}/" in title_clean:
-                # If a set_code was extracted by AI, ensure it appears in the SNKRDUNK title (which always includes set codes like [SV-P 004])
-                if set_code and set_code.lower() not in title_clean:
-                    continue
+                # If a set_code was extracted by AI, we prefer it but don't strictly require it
+                # because formatting (SV-P vs SVP) or missing info shouldn't block the search.
                 filtered_by_number.append((title, pid))
                 
         if not filtered_by_number:
@@ -605,6 +604,7 @@ async def main():
     parser.add_argument("--api_key", required=False, help="Minimax API Key (若未指定，則從環境變數 MINIMAX_API_KEY 讀取)")
     parser.add_argument("--out_dir", required=False, help="若指定，會將結果儲存至給定的資料夾")
     parser.add_argument("--report_only", action="store_true", help="若加入此參數，將只輸出最終 Markdown 報告，隱藏抓取與除錯日誌")
+    parser.add_argument("--lang", default="zh", help="語言設定 (zh 或 en)")
     
     args = parser.parse_args()
     
@@ -620,7 +620,7 @@ async def main():
         print(f"\n==================================================")
         print(f"🔄 開始處理圖片: {img_path}")
         print(f"==================================================")
-        await process_single_image(img_path, api_key, args.out_dir)
+        await process_single_image(img_path, api_key, args.out_dir, lang=args.lang)
 
 async def process_single_image(image_path, api_key, out_dir=None, stream_mode=False, lang="zh"):
     if not os.path.exists(image_path):
