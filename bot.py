@@ -130,8 +130,20 @@ async def handle_image(attachment, message):
         lang = "zh"
 
     # 2. 建立討論串
-    thread_name = "Card Analysis Report" if lang == "en" else "卡片分析報表"
-    thread = await lang_msg.create_thread(name=thread_name, auto_archive_duration=60)
+    try:
+        thread_name = "Card Analysis Report" if lang == "en" else "卡片分析報表"
+        thread = await lang_msg.create_thread(name=thread_name, auto_archive_duration=60)
+        
+        # 主動把使用者加入討論串，確保他會收到通知並看到視窗
+        await thread.add_user(message.author)
+        
+        # 立即傳送第一則訊息，提供即時回饋
+        analyzing_msg = "🔍 Analyzing image, please wait..." if lang == "en" else "🔍 正在分析圖片中，請稍候..."
+        await thread.send(analyzing_msg)
+    except Exception as thread_err:
+        print(f"⚠️ Thread creation failed: {thread_err}")
+        # 如果討論串開不起來，退而求其次直接用普通的頻道訊息
+        thread = message.channel 
 
     # 3. 建立暫存資料夾（海報存這裡）
     card_out_dir = tempfile.mkdtemp(prefix=f"tcg_bot_{message.id}_")
