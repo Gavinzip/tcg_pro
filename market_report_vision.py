@@ -252,7 +252,23 @@ def search_pricecharting(name, number, set_code, is_alt_art=False):
     records.sort(key=lambda x: x['date'], reverse=True)
     resolved_url = product_url if product_url else search_url
     
-    return records, resolved_url
+    # Try to extract the card image URL from the PC product page markdown
+    # Jina renders it as: ![Image N: ...](https://product-images.s3.amazonaws.com/...)
+    pc_img_url = None
+    img_patterns = [
+        r'!\[.*?\]\((https://product-images\.s3\.amazonaws\.com/[^\)]+)\)',
+        r'!\[.*?\]\((https://[^)]+\.jpg[^\)]*)\)',
+        r'!\[.*?\]\((https://[^)]+\.png[^\)]*)\)',
+        r'!\[.*?\]\((https://[^)]+\.webp[^\)]*)\)',
+    ]
+    for pat in img_patterns:
+        m = re.search(pat, md_content)
+        if m:
+            pc_img_url = m.group(1)
+            print(f"DEBUG: Found PC card image: {pc_img_url}")
+            break
+    
+    return records, resolved_url, pc_img_url
 
 
 def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
@@ -534,10 +550,16 @@ async def process_single_image(image_path, api_key, out_dir=None):
         
         pc_records = pc_result[0] if pc_result else None
         pc_url = pc_result[1] if pc_result else None
+        pc_img_url = pc_result[2] if pc_result and len(pc_result) > 2 else None
         
         snkr_records = snkr_result[0] if snkr_result else None
         img_url = snkr_result[1] if snkr_result else None
         snkr_url = snkr_result[2] if snkr_result else None
+    
+    # Fallback: if SNKRDUNK has no image, use PriceCharting image
+    if not img_url and pc_img_url:
+        print(f"ℹ️ SNKRDUNK 無圖片，改用 PriceCharting 圖片作為 fallback: {pc_img_url}")
+        img_url = pc_img_url
     
     jpy_rate = get_exchange_rate()
     
