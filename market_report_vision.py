@@ -606,6 +606,7 @@ async def main():
         print(f"==================================================")
         await process_single_image(img_path, api_key, args.out_dir, lang=args.lang)
 
+from datetime import datetime
 async def process_single_image(image_path, api_key, out_dir=None, stream_mode=False, lang="zh"):
     if not os.path.exists(image_path):
         print(f"❌ Error: 找不到圖片檔案 -> {image_path}", force=True)
@@ -735,7 +736,38 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
             report_lines.append(f"⚔️ 競技頻率\n{competitive_freq}\n")
         report_lines.append("---")
         report_lines.append("📊 近期成交紀錄 (由新到舊)\n🏦 PriceCharting 成交紀錄")
+    async def _parse_d(d_str):
+        from datetime import datetime
+        d_str = d_str.strip()
+        # Handle relative dates: "n 分前", "n 時間前", "n 日前" or "n minutes ago", etc.
+        if "前" in d_str or "ago" in d_str:
+            num = int(re.search(r'\d+', d_str).group(0))
+            if "分" in d_str or "minute" in d_str:
+                return datetime.now() - timedelta(minutes=num)
+            if "時間" in d_str or "hour" in d_str:
+                return datetime.now() - timedelta(hours=num)
+            if "日" in d_str or "day" in d_str:
+                return datetime.now() - timedelta(days=num)
+        
+        # Handle "YYYY-MM-DD"
+        try:
+            return datetime.strptime(d_str, "%Y-%m-%d")
+        except: pass
+        
+        # Handle "YYYY/MM/DD"
+        try:
+            return datetime.strptime(d_str, "%Y/%m/%d")
+        except: pass
+        
+        # Handle "Jan 1, 2024"
+        try:
+            return datetime.strptime(d_str, "%b %d, %Y")
+        except: pass
+        
+        return datetime.now()
+
     async def count_30_days(records_list, tgt_grade):
+        from datetime import timedelta
         cutoff = datetime.now() - timedelta(days=30)
         return len([r for r in (records_list or []) if r.get('grade') == tgt_grade and (await _parse_d(r['date'])) > cutoff])
     if pc_records:
@@ -744,12 +776,24 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
                 state_label = "Grade" if lang == "en" else "狀態"
                 report_lines.append(f"📅 {r['date']}      💰 ${r['price']:.2f} USD      📝 {state_label}：{r['grade']}")
             
-            prices = [r['price'] for r in report_pc_records]
-            report_lines.append("📊 Statistics" if lang == "en" else "📊 統計資料")
-            report_lines.append(f"　💰 {'Highest':}: ${max(prices):.2f} USD" if lang == "en" else f"　💰 最高成交價：${max(prices):.2f} USD")
-            report_lines.append(f"　💰 {'Lowest':}: ${min(prices):.2f} USD" if lang == "en" else f"　💰 最低成交價：${min(prices):.2f} USD")
-            report_lines.append(f"　💰 {'Average':}: ${sum(prices)/len(prices):.2f} USD" if lang == "en" else f"　💰 平均成交價：${sum(prices)/len(prices):.2f} USD")
-            report_lines.append(f"　📈 {'Records':}: {len(prices)}" if lang == "en" else f"　📈 資料筆數：{len(prices)} 筆")
+            from datetime import timedelta
+            cutoff_12m = datetime.now() - timedelta(days=365)
+            # Filter for statistics: only last 12 months
+            stats_pc_records = []
+            for r in report_pc_records:
+                parsed_date = await _parse_d(r['date'])
+                if parsed_date > cutoff_12m:
+                    stats_pc_records.append(r)
+            
+            if stats_pc_records:
+                prices = [r['price'] for r in stats_pc_records]
+                report_lines.append("📊 Statistics (Last 12 Mo.)" if lang == "en" else "📊 統計資料 (近 12 個月)")
+                report_lines.append(f"　💰 {'Highest':}: ${max(prices):.2f} USD" if lang == "en" else f"　💰 最高成交價：${max(prices):.2f} USD")
+                report_lines.append(f"　💰 {'Lowest':}: ${min(prices):.2f} USD" if lang == "en" else f"　💰 最低成交價：${min(prices):.2f} USD")
+                report_lines.append(f"　💰 {'Average':}: ${sum(prices)/len(prices):.2f} USD" if lang == "en" else f"　💰 平均成交價：${sum(prices)/len(prices):.2f} USD")
+                report_lines.append(f"　📈 {'Records':}: {len(prices)}" if lang == "en" else f"　📈 資料筆數：{len(prices)} 筆")
+            else:
+                report_lines.append("📊 Statistics (No records in last 12 mo.)" if lang == "en" else "📊 統計資料 (近 12 個月無成交紀錄)")
         else:
             no_data_msg = f"PriceCharting: No {grade} records found." if lang == "en" else f"PriceCharting: 無 {grade} 等級的卡片資料"
             report_lines.append(no_data_msg)
@@ -773,13 +817,23 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
                 usd_price = r['price'] / jpy_rate
                 state_label = "Grade" if lang == "en" else "狀態"
                 report_lines.append(f"📅 {r['date']}      💰 ¥{int(r['price']):,} (~${usd_price:.0f} USD)      📝 {state_label}：{r['grade']}")
-            prices = [r['price'] for r in report_snkr_records] # Changed from snkr_target_records to report_snkr_records
-            avg_price = sum(prices)/len(prices)
-            report_lines.append("📊 Statistics" if lang == "en" else "📊 統計資料")
-            report_lines.append(f"　💰 {'Highest':}: ¥{int(max(prices)):,} (~${max(prices)/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 最高成交價：¥{int(max(prices)):,} (~${max(prices)/jpy_rate:.0f} USD)")
-            report_lines.append(f"　💰 {'Lowest':}: ¥{int(min(prices)):,} (~${min(prices)/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 最低成交價：¥{int(min(prices)):,} (~${min(prices)/jpy_rate:.0f} USD)")
-            report_lines.append(f"　💰 {'Average':}: ¥{int(avg_price):,} (~${avg_price/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 平均成交價：¥{int(avg_price):,} (~${avg_price/jpy_rate:.0f} USD)")
-            report_lines.append(f"　📈 {'Records':}: {len(prices)}" if lang == "en" else f"　📈 資料筆數：{len(prices)} 筆")
+            # Filter for statistics: only last 12 months
+            stats_snkr_records = []
+            for r in report_snkr_records:
+                parsed_date = await _parse_d(r['date'])
+                if parsed_date > cutoff_12m:
+                    stats_snkr_records.append(r)
+
+            if stats_snkr_records:
+                prices = [r['price'] for r in stats_snkr_records]
+                avg_price = sum(prices)/len(prices)
+                report_lines.append("📊 Statistics (Last 12 Mo.)" if lang == "en" else "📊 統計資料 (近 12 個月)")
+                report_lines.append(f"　💰 {'Highest':}: ¥{int(max(prices)):,} (~${max(prices)/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 最高成交價：¥{int(max(prices)):,} (~${max(prices)/jpy_rate:.0f} USD)")
+                report_lines.append(f"　💰 {'Lowest':}: ¥{int(min(prices)):,} (~${min(prices)/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 最低成交價：¥{int(min(prices)):,} (~${min(prices)/jpy_rate:.0f} USD)")
+                report_lines.append(f"　💰 {'Average':}: ¥{int(avg_price):,} (~${avg_price/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 平均成交價：¥{int(avg_price):,} (~${avg_price/jpy_rate:.0f} USD)")
+                report_lines.append(f"　📈 {'Records':}: {len(prices)}" if lang == "en" else f"　📈 資料筆數：{len(prices)} 筆")
+            else:
+                report_lines.append("📊 Statistics (No records in last 12 mo.)" if lang == "en" else "📊 統計資料 (近 12 個月無成交紀錄)")
         else:
             no_data_msg = f"SNKRDUNK: No {target_disp} records found." if lang == "en" else f"SNKRDUNK: 無 {target_disp} 等級的卡片資料"
             report_lines.append(no_data_msg)
