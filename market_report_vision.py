@@ -138,23 +138,30 @@ def search_pricecharting(name, number, set_code, is_alt_art=False):
         valid_urls = []
         name_slug = re.sub(r'[^a-zA-Z0-9]', '-', name.lower())
         
+        matching_both = []
+        matching_name = []
+        matching_number = []
+        
+        name_slug = re.sub(r'[^a-zA-Z0-9]', '-', name.lower())
+        
         for u in urls:
             u_end = u.split('/')[-1].lower()
             
-            # 1. Check if both name and number match (Highest priority)
+            # 1. Check if both name and number match
             if name_slug in u_end and re.search(rf'(?<!\d){number_clean}(?!\d)', u_end):
-                valid_urls.insert(0, u) # Put at the front
-            # 2. Check if name matches (High priority)
+                matching_both.append(u)
+            # 2. Check if name matches
             elif name_slug in u_end:
-                valid_urls.append(u)
-            # 3. Check if number strictly matches (Fallback)
+                matching_name.append(u)
+            # 3. Check if number strictly matches
             elif re.search(rf'(?<!\d){number_clean}(?!\d)', u_end):
-                # We still consider this a valid URL even if set_code isn't in it,
-                # but we'll try to match it if it's there.
-                valid_urls.append(u)
+                matching_number.append(u)
+                
+        # Tiered merge: Highest priority is matching BOTH name and number
+        valid_urls = matching_both + matching_name + matching_number
                 
         if not valid_urls:
-            print(f"DEBUG: No PC product URL stringently matched the card name '{name}' or number '{number_clean}'.")
+            print(f"DEBUG: No PC product URL matched the card name '{name}' or number '{number_clean}'.")
             return None, None
             
         # Prioritize the first valid match
@@ -495,7 +502,7 @@ You are a Pokémon TCG expert specializing in grading and market valuation. Anal
 你是一位於寶可夢卡牌 (Pokemon TCG) 領域專精的鑑定與估價專家。請分析這張卡片圖片，並精準提取以下 13 個欄位的資訊：
 {
   "name": "英文名稱 (必填，例如 Venusaur ex 或 Lillie 等)",
-  "set_code": "系列代號 (選填，位於卡牌左下角，如 SV1a, S8a-G, SM-P, S-P, SV-P, 151 等。如果沒有印則留空字串。若卡面印的是 004/SM-P 這類格式，set_code 填 SM-P)",
+  "set_code": "系列代號 (選填，位於卡牌左下角，如 SV1a, S8a-G, SM-P, S-P, SV-P,  等。如果沒有印則留空字串。若卡面印的是 004/SM-P 這類格式，set_code 填 SM-P)",
   "number": "卡片編號 (必填，只填數字本體，保留前導 0 與斜線，例如 023/108, 001/015, 077/067。❗️例外條款：若卡面只印 004/SM-P (斜線後為系列代號而非總數)，則 number 直接輸出完整字串 004/SM-P，不要拆開也不要猜測)",
   "grade": "卡片等級 (必填，如果有PSA/BGS等鑑定盒，印有10就填如 PSA 10, 否則如果是裸卡就填 Ungraded)",
   "jp_name": "日文名稱 (選填，沒有請留空字串)",
