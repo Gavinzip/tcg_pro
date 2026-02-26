@@ -101,16 +101,27 @@ def extract_price(price_str):
         return 0.0
 
 def search_pricecharting(name, number, set_code, is_alt_art=False):
-    # Strip prefix like "No." (e.g. "No.025" -> "25"), then apply lstrip('0')
-    _num_raw = number.split('/')[0]
+    # Japanese Promo Handling: if number is like "297/SM-P", keep the suffix
+    _num_parts = number.split('/')
+    _num_raw = _num_parts[0].strip()
     _digits_only = re.search(r'\d+', _num_raw)
     number_clean = _digits_only.group(0).lstrip('0') if _digits_only else _num_raw.lstrip('0')
     if not number_clean: number_clean = '0'
     
-    # Try with set code first, if available
+    # Try to extract suffix like SM-P from the number itself if it's there
+    suffix = ""
+    if len(_num_parts) > 1:
+        potential_suffix = _num_parts[1].strip()
+        if re.search(r'(SM-P|S-P|SV-P|SV-G|S8a-G)', potential_suffix, re.IGNORECASE):
+            suffix = potential_suffix
+    
+    # Try with set code or suffix first
     queries_to_try = []
-    if set_code:
-        queries_to_try.append(f"{name} {set_code} {number_clean}".replace(" ", "+"))
+    final_set_code = set_code if set_code else suffix
+    
+    if final_set_code:
+        queries_to_try.append(f"{name} {final_set_code} {number_clean}".replace(" ", "+"))
+    
     queries_to_try.append(f"{name} {number_clean}".replace(" ", "+"))
 
     md_content = ""
@@ -208,11 +219,11 @@ def search_pricecharting(name, number, set_code, is_alt_art=False):
                 title_clean = line.replace(" ", "").lower()
                 
                 detected_grade = None
-                if "psa10" in title_clean:
+                if re.search(r'(psa|cgc|bgs|grade|gem)10', title_clean) or ("psa" in title_clean and "10" in title_clean):
                     detected_grade = "PSA 10"
-                elif "psa9" in title_clean:
+                elif re.search(r'(psa|cgc|bgs|grade|gem)9', title_clean) or ("psa" in title_clean and "9" in title_clean):
                     detected_grade = "PSA 9"
-                elif "psa8" in title_clean:
+                elif re.search(r'(psa|cgc|bgs|grade|gem)8', title_clean) or ("psa" in title_clean and "8" in title_clean):
                     detected_grade = "PSA 8"
                 elif not re.search(r'(psa|bgs|cgc|grade|gem)', title_clean):
                     detected_grade = "Ungraded"
@@ -248,11 +259,11 @@ def search_pricecharting(name, number, set_code, is_alt_art=False):
                 title_clean = line.replace(" ", "").lower()
                 
                 detected_grade = None
-                if "psa10" in title_clean:
+                if re.search(r'(psa|cgc|bgs|grade|gem)10', title_clean) or ("psa" in title_clean and "10" in title_clean):
                     detected_grade = "PSA 10"
-                elif "psa9" in title_clean:
+                elif re.search(r'(psa|cgc|bgs|grade|gem)9', title_clean) or ("psa" in title_clean and "9" in title_clean):
                     detected_grade = "PSA 9"
-                elif "psa8" in title_clean:
+                elif re.search(r'(psa|cgc|bgs|grade|gem)8', title_clean) or ("psa" in title_clean and "8" in title_clean):
                     detected_grade = "PSA 8"
                 elif not re.search(r'(psa|bgs|cgc|grade|gem)', title_clean):
                     detected_grade = "Ungraded"
@@ -263,7 +274,7 @@ def search_pricecharting(name, number, set_code, is_alt_art=False):
                         "price": price_usd,
                         "grade": detected_grade
                     })
-                    current_date = None # Reset 狀態機，避免錯位
+                    # current_date = None # 移除此行，允許同一日期有多筆紀錄
     # Also parse the PC bottom summary prices (e.g. "Ungraded$33.46", "PSA 10$125.00")
     # These are summary/avg prices shown at the bottom of the page
     from datetime import datetime
