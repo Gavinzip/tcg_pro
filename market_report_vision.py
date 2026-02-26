@@ -37,6 +37,7 @@ def fetch_jina_markdown(target_url):
     MAX_REQUESTS = 18
     WINDOW_SIZE = 60.0
     
+    sleep_time = 0
     with _jina_lock:
         now = time.time()
         # Remove requests older than 60 seconds
@@ -46,15 +47,17 @@ def fetch_jina_markdown(target_url):
         if len(_jina_requests_queue) >= MAX_REQUESTS:
             # Calculate sleep time required to let the oldest request expire
             sleep_time = WINDOW_SIZE - (now - _jina_requests_queue[0])
-            if sleep_time > 0:
-                print(f"⏳ Jina API rate limit approaching ({MAX_REQUESTS}/min). Pausing for {sleep_time:.1f} seconds to cool down...")
-                time.sleep(sleep_time)
-                
-            # After sleeping, the oldest request should have expired, so we record the new "now"
-            now = time.time()
-            while _jina_requests_queue and now - _jina_requests_queue[0] > WINDOW_SIZE:
-                _jina_requests_queue.popleft()
-                
+    
+    if sleep_time > 0:
+        print(f"⏳ Jina API rate limit approaching ({MAX_REQUESTS}/min). Pausing for {sleep_time:.1f} seconds to cool down...")
+        time.sleep(sleep_time)
+        
+    # Re-acquire lock to record the actual request time
+    with _jina_lock:
+        now = time.time()
+        # Clean up again just in case another thread already cleaned up during our sleep
+        while _jina_requests_queue and now - _jina_requests_queue[0] > WINDOW_SIZE:
+            _jina_requests_queue.popleft()
         _jina_requests_queue.append(now)
 
     print(f"Fetching: {target_url}...")
@@ -331,25 +334,14 @@ def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
     terms_to_try = []
     
     # SNKRDUNK search is highly accurate with Set Code (e.g. "ピカチュウ S8a-G", "ピカチュウ SV-P")
-    if set_code and jp_name:
-        terms_to_try.append(f"{jp_name} {set_code}")
-        if "-" in set_code:
-            terms_to_try.append(f"{jp_name} {set_code.replace('-', '')}")
     if set_code:
+        if jp_name:
+            terms_to_try.append(f"{jp_name} {set_code}")
         terms_to_try.append(f"{en_name} {set_code}")
-        if "-" in set_code:
-            terms_to_try.append(f"{en_name} {set_code.replace('-', '')}")
         
     if jp_name:
-        terms_to_try.extend([
-            f"{jp_name} {number_clean}",
-            f"{jp_name} {number_padded}"
-        ])
-        
-    terms_to_try.extend([
-        f"{en_name} {number_clean}",
-        f"{en_name} {number_padded}"
-    ])
+        terms_to_try.append(f"{jp_name} {number_padded}")
+    terms_to_try.append(f"{en_name} {number_padded}")
     
     product_id = None
     
