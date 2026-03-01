@@ -434,7 +434,7 @@ def search_pricecharting(name, number, set_code, is_alt_art=False, category="Pok
                 if "manga" not in lower_u and "alternate-art" not in lower_u and \
                    "-sp" not in lower_u and "flagship" not in lower_u:
                     product_url = u
-                    selection_reason = "Normal Art Filter"
+                    selection_reason = "Normal Art Filter (無 manga/alternate-art 關鍵字)"
                     break
         else:
             for u in valid_urls:
@@ -443,7 +443,7 @@ def search_pricecharting(name, number, set_code, is_alt_art=False, category="Pok
                 if "manga" in lower_u or "alternate-art" in lower_u or \
                    "-sp" in lower_u:
                     product_url = u
-                    selection_reason = "Alt-Art Filter"
+                    selection_reason = "Alt-Art Filter (偵測到 Alt-Art 關鍵字)"
                     break
         
         _debug_step("PriceCharting", 1, name_slug, search_url, "OK", selected_url=product_url, reason=selection_reason, candidate_urls=valid_urls)
@@ -503,36 +503,42 @@ def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
             # SNKRDUNK always pads Pokemon/One Piece numbers to at least 3 digits
             # We strictly enforce the padded number to prevent matching Jina listing indices (e.g. " 4 Pikachu")
             if number_padded in title_clean or f"{number_clean}/" in title_clean:
-                # If a set_code was extracted by AI, we prefer it but don't strictly require it
-                # because formatting (SV-P vs SVP) or missing info shouldn't block the search.
                 filtered_by_number.append((title, pid))
+                _debug_log(f"  ✅ 符合編號 '{number_padded}': [{pid}] {title}")
+            else:
+                _debug_log(f"  ❌ 不含編號 '{number_padded}': [{pid}] {title}")
                 
         if not filtered_by_number:
-            continue # If no titles specifically have the card number, do not guess
+            _debug_step("SNKRDUNK", snkr_step, term, search_url, "NO_MATCH", reason=f"找不到編號 '{number_padded}'")
+            time.sleep(1)
+            continue
             
         unique_matches = filtered_by_number
-                
-        if unique_matches:
-            product_id = unique_matches[0][1] # default to first result
-        if matches:
-            _debug_step("SNKRDUNK", snkr_step, term, search_url, "OK", reason=f"找到 {len(matches)} 個匹配項")
-            for title, pid in matches:
-                if is_alt_art:
-                    lower_t = title.lower()
-                    # 航海王模式：SR-P (Parallel) 與 L-P (Leader Parallel) 是明確的異圖標誌
-                    if "コミパラ" in lower_t or "manga" in lower_t or "パラレル" in lower_t \
-                       or "-p" in lower_t or "-sp" in lower_t \
-                       or "sr-p" in lower_t or "l-p" in lower_t:
-                        product_id = pid
-                        break
-                else:
+        product_id = unique_matches[0][1] # default
+        selection_reason = "Default (First match)"
+        
+        _debug_step("SNKRDUNK", snkr_step, term, search_url, "OK", reason=f"找到 {len(unique_matches)} 個匹配項")
+        for title, pid in unique_matches:
+            if is_alt_art:
+                lower_t = title.lower()
+                if "コミパラ" in lower_t or "manga" in lower_t or "パラレル" in lower_t \
+                   or "-p" in lower_t or "-sp" in lower_t \
+                   or "sr-p" in lower_t or "l-p" in lower_t:
                     product_id = pid
+                    selection_reason = "Alt-Art Filter"
                     break
-            
-            if product_id:
-                break
-        else:
-            _debug_step("SNKRDUNK", snkr_step, term, search_url, "NO_RESULTS", reason="沒有搜尋結果")
+            else:
+                lower_t = title.lower()
+                if "コミパラ" not in lower_t and "manga" not in lower_t and "パラレル" not in lower_t \
+                   and "-p" not in lower_t and "-sp" not in lower_t \
+                   and "sr-p" not in lower_t and "l-p" not in lower_t:
+                    product_id = pid
+                    selection_reason = "Normal Art Filter"
+                    break
+        
+        if product_id:
+            _debug_step("SNKRDUNK", snkr_step, term, search_url, "OK", selected_url=f"https://snkrdunk.com/apparels/{product_id}", reason=selection_reason)
+            break
         
         time.sleep(1)
     print(f"Found SNKRDUNK Product ID: {product_id}")
@@ -890,10 +896,10 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     # 第二階段：執行爬蟲抓取資料
     print("--------------------------------------------------")
     print(f"🌐 正在從網路(PC & SNKRDUNK)抓取市場行情 (異圖/特殊版: {is_alt_art})...")
-    loop = asyncio.get_running_loop()
+    # Using independent copy_context().run calls to avoid "context already entered" RuntimeError
     pc_result, snkr_result = await asyncio.gather(
-        loop.run_in_executor(None, search_pricecharting, name, number, set_code, is_alt_art, category),
-        loop.run_in_executor(None, search_snkrdunk, name, jp_name, number, set_code, is_alt_art),
+        loop.run_in_executor(None, contextvars.copy_context().run, search_pricecharting, name, number, set_code, grade, is_alt_art, category),
+        loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art),
     )
 
     # 處理 PriceCharting 歧義（航海王版本選擇）
