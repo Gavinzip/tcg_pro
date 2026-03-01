@@ -100,22 +100,62 @@ class LangSelectView(discord.ui.View):
         except asyncio.TimeoutError:
             return None
 
+class VersionSelectView(discord.ui.View):
+    """
+    版本選擇按鈕 View (航海王專用)。
+    """
+    def __init__(self, candidates):
+        super().__init__(timeout=180)  # 3 分鐘超時
+        self.chosen_url = None
+        self._event = asyncio.Event()
+        self.candidates = candidates
+        
+        # 動態建立按鈕
+        for i, url in enumerate(candidates, start=1):
+            btn = discord.ui.Button(label=f"選擇版本 {i}", style=discord.ButtonStyle.primary, custom_id=f"ver_{i}")
+            btn.callback = self.make_callback(url, i)
+            self.add_item(btn)
+
+    def make_callback(self, url, idx):
+        async def callback(interaction: discord.Interaction):
+            self.chosen_url = url
+            self._event.set()
+            await interaction.response.edit_message(content=f"✅ 已選擇 **第 {idx} 個版本**，繼續生成報告...", view=None)
+        return callback
+
+    async def wait_for_choice(self) -> str | None:
+        try:
+            await asyncio.wait_for(self._event.wait(), timeout=180)
+            return self.chosen_url
+        except asyncio.TimeoutError:
+            return None
+
 
 async def handle_image(attachment, message):
     """
     ** 並發核心函數（stream 模式 + 語言選擇）**
 
     流程：
-    1. 詢問使用者選擇語言（中文 / English）
-    2. 建立討論串
+    1. 建立討論串並加入使用者
+    2. 在討論串內詢問使用者選擇語言（中文 / English）
     3. 下載圖片
     4. AI 分析 + 爬蟲 → 立即傳送文字報告
     5. （非同步）生成海報 → 生成完成後補傳
     """
-    # 1. 先詢問語言
+    # 1. 建立討論串並加入使用者
+    # 先發送一個初始訊息作為討論串的起點
+    init_msg = await message.reply(f"🃏 收到圖片：**{attachment.filename}**，準備開始分析...")
+    
+    thread_name = f"Card Analysis: {attachment.filename}"
+    thread = await init_msg.create_thread(name=thread_name, auto_archive_duration=60)
+    
+    # 主動把使用者加入討論串，確保他會收到通知並看到視窗
+    await thread.add_user(message.author)
+
+    # 2. 在討論串內詢問語言
     lang_view = LangSelectView()
-    lang_msg = await message.reply(
-        f"🃏 收到圖片：**{attachment.filename}**\n請選擇報告語言 / Please select report language：",
+    lang_msg = await thread.send(
+        "請選擇報告語言 / Please select report language：",
         view=lang_view
     )
 
@@ -128,14 +168,14 @@ async def handle_image(attachment, message):
             view=None
         )
         lang = "zh"
+    else:
+        # 根據選擇更新討論串名稱
+        new_name = "Card Analysis Report" if lang == "en" else "卡片分析報表"
+        try:
+            await thread.edit(name=new_name)
+        except:
+            pass
 
-    # 2. 建立討論串
-    thread_name = "Card Analysis Report" if lang == "en" else "卡片分析報表"
-    thread = await lang_msg.create_thread(name=thread_name, auto_archive_duration=60)
-    
-    # 主動把使用者加入討論串，確保他會收到通知並看到視窗
-    await thread.add_user(message.author)
-    
     # 立即傳送第一則訊息，提供即時回饋
     analyzing_msg = "🔍 Analyzing image, please wait..." if lang == "en" else "🔍 正在分析圖片中，請稍候..."
     await thread.send(analyzing_msg)
@@ -154,6 +194,52 @@ async def handle_image(attachment, message):
         result = await market_report_vision.process_single_image(
             img_path, api_key, out_dir=card_out_dir, stream_mode=True, lang=lang
         )
+
+        # 處理「需要版本選擇」的狀態 (航海王)
+        if isinstance(result, dict) and result.get("status") == "need_selection":
+            candidates = result["candidates"]
+            await thread.send(f"⚠️ 偵測到**航海王**有多個候選版本，請根據下方預覽圖選擇正確的版本：")
+            
+            # 抓取每個候選版本的縮圖並以 Embed 形式呈現
+            loading_msg = await thread.send("🖼️ 正在抓取版本預覽中...")
+            loop = asyncio.get_running_loop()
+            
+            for i, url in enumerate(candidates, start=1):
+                # 再次利用 _fetch_pc_prices_from_url 抓取圖片 URL (不帶 md_content 會重新 fetch)
+                _re, _url, thumb_url = await loop.run_in_executor(None, market_report_vision._fetch_pc_prices_from_url, url)
+                slug = url.split('/')[-1]
+                
+                embed = discord.Embed(title=f"版本 #{i}", description=f"Slug: `{slug}`", url=url, color=0x3498db)
+                if thumb_url:
+                    embed.set_thumbnail(url=thumb_url)
+                else:
+                    embed.description += "\n*(無法取得預覽圖)*"
+                await thread.send(embed=embed)
+
+            await loading_msg.delete()
+
+            ver_view = VersionSelectView(candidates)
+            await thread.send("請點選下方按鈕進行選擇：", view=ver_view)
+            selected_url = await ver_view.wait_for_choice()
+
+            if not selected_url:
+                await thread.send("⏰ 選擇逾時，已中止。")
+                return
+
+            # 使用選擇的 URL 重新抓取並完成報告
+            final_pc_res = await loop.run_in_executor(None, market_report_vision._fetch_pc_prices_from_url, selected_url)
+            pc_records, pc_url, pc_img_url = final_pc_res
+            
+            snkr_result = result["snkr_result"]
+            snkr_records, final_img_url, snkr_url = snkr_result if snkr_result else (None, None, None)
+            if not final_img_url and pc_img_url:
+                final_img_url = pc_img_url
+            
+            jpy_rate = market_report_vision.get_exchange_rate()
+            # 呼叫 helper 完成剩餘流程
+            result = await market_report_vision.finish_report_after_selection(
+                result["card_info"], pc_records, pc_url, pc_img_url, snkr_records, final_img_url, snkr_url, jpy_rate, result["out_dir"], result["lang"]
+            )
 
         if isinstance(result, tuple):
             report_text, poster_data = result
