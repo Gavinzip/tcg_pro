@@ -844,10 +844,10 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     
     jpy_rate = get_exchange_rate()
     return await finish_report_after_selection(
-        card_info, pc_records, pc_url, pc_img_url, snkr_records, img_url, snkr_url, jpy_rate, out_dir, lang
+        card_info, pc_records, pc_url, pc_img_url, snkr_records, img_url, snkr_url, jpy_rate, out_dir, lang, stream_mode=stream_mode
     )
 
-async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_url, snkr_records, img_url, snkr_url, jpy_rate, out_dir, lang):
+async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_url, snkr_records, img_url, snkr_url, jpy_rate, out_dir, lang, stream_mode=False):
     """完成報告生成的最後步驟（適用於直接生成或選擇版本後生成）"""
     name = card_info.get("name", "Unknown")
     number = str(card_info.get("number", "0"))

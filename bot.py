@@ -243,7 +243,7 @@ async def handle_image(attachment, message):
             jpy_rate = market_report_vision.get_exchange_rate()
             # 呼叫 helper 完成剩餘流程
             result = await market_report_vision.finish_report_after_selection(
-                result["card_info"], pc_records, pc_url, pc_img_url, snkr_records, final_img_url, snkr_url, jpy_rate, result["out_dir"], result["lang"]
+                result["card_info"], pc_records, pc_url, pc_img_url, snkr_records, final_img_url, snkr_url, jpy_rate, result["out_dir"], result["lang"], stream_mode=True
             )
 
         if isinstance(result, tuple):
