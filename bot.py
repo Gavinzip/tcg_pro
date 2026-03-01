@@ -64,34 +64,6 @@ def smart_split(text, limit=1900):
     return chunks
 
 
-class LangSelectView(discord.ui.View):
-    """
-    語言選擇按鈕 View。
-    當使用者點選後，設定 chosen_lang 並喚醒等待中的 Event。
-    """
-    def __init__(self):
-        super().__init__(timeout=60)  # 60 秒未點選自動超時
-        self.chosen_lang = None
-        self._event = asyncio.Event()
-
-    @discord.ui.button(label="🇹🇼  中文", style=discord.ButtonStyle.primary, custom_id="lang_zh")
-    async def choose_zh(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.chosen_lang = "zh"
-        self._event.set()
-        await interaction.response.edit_message(
-            content="✅ 已選擇**中文**，報告生成中...",
-            view=None
-        )
-
-    @discord.ui.button(label="🇺🇸  English", style=discord.ButtonStyle.secondary, custom_id="lang_en")
-    async def choose_en(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.chosen_lang = "en"
-        self._event.set()
-        await interaction.response.edit_message(
-            content="✅ **English** selected, generating report...",
-            view=None
-        )
-
     async def wait_for_choice(self) -> str | None:
         """等待使用者點選按鈕，回傳 'zh' | 'en' | None（逾時）"""
         try:
@@ -99,6 +71,8 @@ class LangSelectView(discord.ui.View):
             return self.chosen_lang
         except asyncio.TimeoutError:
             return None
+
+# 移除 LangSelectView，改為透過訊息內容判斷語言
 
 class VersionSelectView(discord.ui.View):
     """
@@ -133,52 +107,17 @@ class VersionSelectView(discord.ui.View):
 
 async def handle_image(attachment, message):
     """
-    ** 並發核心函數（stream 模式 + 語言選擇）**
-
-    流程：
-    1. 建立討論串並加入使用者
-    2. 在討論串內詢問使用者選擇語言（中文 / English）
-    3. 下載圖片
-    4. AI 分析 + 爬蟲 → 立即傳送文字報告
-    5. （非同步）生成海報 → 生成完成後補傳
+    ** 並發核心函數（直接回覆，不再使用討論串）**
     """
-    # 1. 建立討論串並加入使用者
-    # 先發送一個初始訊息作為討論串的起點
-    init_msg = await message.reply(f"🃏 收到圖片：**{attachment.filename}**，準備開始分析...")
+    # 1. 判斷語言（預設中文，訊息包含 "en" 則切換英文）
+    lang = "en" if "en" in message.content.lower() else "zh"
     
-    thread_name = f"Card Analysis: {attachment.filename}"
-    thread = await init_msg.create_thread(name=thread_name, auto_archive_duration=60)
+    # 2. 初始回覆
+    init_msg_text = f"🃏 正在分析：**{attachment.filename}** (語言: {'English' if lang == 'en' else '中文'})..."
+    init_msg = await message.reply(init_msg_text)
     
-    # 主動把使用者加入討論串，確保他會收到通知並看到視窗
-    await thread.add_user(message.author)
-
-    # 2. 在討論串內詢問語言
-    lang_view = LangSelectView()
-    lang_msg = await thread.send(
-        "請選擇報告語言 / Please select report language：",
-        view=lang_view
-    )
-
-    lang = await lang_view.wait_for_choice()
-
-    if lang is None:
-        # 逾時未選擇
-        await lang_msg.edit(
-            content="⏰ 語言選擇逾時，已自動使用中文。Card language selection timed out, defaulting to Chinese.",
-            view=None
-        )
-        lang = "zh"
-    else:
-        # 根據選擇更新討論串名稱
-        new_name = "Card Analysis Report" if lang == "en" else "卡片分析報表"
-        try:
-            await thread.edit(name=new_name)
-        except:
-            pass
-
-    # 立即傳送第一則訊息，提供即時回饋
-    analyzing_msg = "🔍 Analyzing image, please wait..." if lang == "en" else "🔍 正在分析圖片中，請稍候..."
-    await thread.send(analyzing_msg)
+    # 使用當前頻道
+    channel = message.channel
 
     # 3. 建立暫存資料夾（海報存這裡）
     card_out_dir = tempfile.mkdtemp(prefix=f"tcg_bot_{message.id}_")
@@ -191,24 +130,23 @@ async def handle_image(attachment, message):
         market_report_vision.REPORT_ONLY = True
         api_key = os.getenv("MINIMAX_API_KEY")
 
+        # 1. 第一階段分析
         result = await market_report_vision.process_single_image(
             img_path, api_key, out_dir=card_out_dir, stream_mode=True, lang=lang
         )
 
-        # 處理「需要版本選擇」的狀態 (航海王)
+        # 2. 處理「需要版本選擇」的狀態 (航海王)
         if isinstance(result, dict) and result.get("status") == "need_selection":
             candidates = result["candidates"]
-            # 去重並保留順序
             candidates = list(dict.fromkeys(candidates))
             
-            await thread.send(f"⚠️ 偵測到**航海王**有多個候選版本，請根據下方預覽圖選擇正確的版本：")
+            await channel.send(f"⚠️ 偵測到**航海王**有多個候選版本，請根據下方預覽圖選擇正確的版本：")
             
             # 抓取每個候選版本的縮圖並以 Embed 呈現
-            loading_msg = await thread.send("🖼️ 正在抓取版本預覽中...")
+            loading_msg = await channel.send("🖼️ 正在抓取版本預覽中...")
             loop = asyncio.get_running_loop()
             
             for i, url in enumerate(candidates, start=1):
-                # 這裡改為順序執行並加上 skip_hi_res=True 以加快速度
                 print(f"DEBUG: Fetching thumbnail for candidate {i}: {url}")
                 _re, _url, thumb_url = await loop.run_in_executor(None, lambda: market_report_vision._fetch_pc_prices_from_url(url, skip_hi_res=True))
                 slug = url.split('/')[-1]
@@ -218,17 +156,16 @@ async def handle_image(attachment, message):
                     embed.set_thumbnail(url=thumb_url)
                 else:
                     embed.description += "\n*(無法取得預覽圖)*"
-                    print(f"DEBUG: Failed to find thumbnail for {url}")
-                await thread.send(embed=embed)
+                await channel.send(embed=embed)
 
             await loading_msg.delete()
 
             ver_view = VersionSelectView(candidates)
-            await thread.send("請點選下方按鈕進行選擇：", view=ver_view)
+            await channel.send("請點選下方按鈕進行選擇：", view=ver_view)
             selected_url = await ver_view.wait_for_choice()
 
             if not selected_url:
-                await thread.send("⏰ 選擇逾時，已中止。")
+                await channel.send("⏰ 選擇逾時，已中止。")
                 return
 
             # 使用選擇的 URL 重新抓取並完成報告
@@ -246,51 +183,45 @@ async def handle_image(attachment, message):
                 result["card_info"], pc_records, pc_url, pc_img_url, snkr_records, final_img_url, snkr_url, jpy_rate, result["out_dir"], result["lang"], stream_mode=True
             )
 
+        # 3. 處理最終結果
         if isinstance(result, tuple):
             report_text, poster_data = result
         else:
             report_text = result
             poster_data = None
 
-        # 4. 立即傳送文字報告
+        # 4. 傳送文字報告
         if report_text:
             if report_text.startswith("❌"):
-                await thread.send(report_text)
+                await channel.send(report_text)
             else:
                 for chunk in smart_split(report_text):
-                    await thread.send(chunk)
+                    await channel.send(chunk)
         else:
-            err_msg = "❌ Analysis failed: No card info found or unknown error." if lang == "en" else "❌ 分析失敗：未發現卡片資訊或發生未知錯誤。"
-            await thread.send(err_msg)
+            err_msg = "❌ Analysis failed." if lang == "en" else "❌ 分析失敗。"
+            await channel.send(err_msg)
             return
 
         # 5. 生成海報
         if poster_data:
-            wait_msg = "🖼️ Generating poster, please wait..." if lang == "en" else "🖼️ 海報生成中，請稍候..."
-            await thread.send(wait_msg)
             try:
                 out_paths = await market_report_vision.generate_posters(poster_data)
                 if out_paths:
                     for path in out_paths:
                         if os.path.exists(path):
-                            await thread.send(file=discord.File(path))
-                else:
-                    fail_msg = "⚠️ Poster generation failed, but the text report is complete." if lang == "en" else "⚠️ 海報生成失敗，但文字報告已完成。"
-                    await thread.send(fail_msg)
+                            await channel.send(file=discord.File(path))
             except Exception as poster_err:
-                err_msg = f"⚠️ Poster generation error: {poster_err}" if lang == "en" else f"⚠️ 海報生成時發生錯誤：{poster_err}"
-                await thread.send(err_msg)
+                print(f"⚠️ Poster generation error: {poster_err}")
 
     except Exception as e:
         error_trace = traceback.format_exc()
         print(f"❌ 分析失敗 ({attachment.filename}): {e}", file=sys.stderr)
-        await thread.send(
+        await channel.send(
             f"❌ System error:\n```python\n{error_trace[-1900:]}\n```"
         )
-
     finally:
         shutil.rmtree(card_out_dir, ignore_errors=True)
-        print(f"✅ [並發] 完成並清理: {attachment.filename}")
+        print(f"✅ 完成並清理暫存: {attachment.filename}")
 
 
 @client.event
