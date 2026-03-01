@@ -19,7 +19,77 @@ from dotenv import load_dotenv
 load_dotenv()
 
 REPORT_ONLY = False
-DEBUG_DIR = None
+import contextvars
+# Use ContextVar for thread-safe per-task debug directory
+_debug_dir_var = contextvars.ContextVar('DEBUG_DIR', default=None)
+
+def _get_debug_dir():
+    return _debug_dir_var.get()
+
+def _set_debug_dir(path):
+    _debug_dir_var.set(path)
+
+def _debug_save(filename, content):
+    """Debug 輔助函數：將內容存入 DEBUG_DIR/filename（若 DEBUG_DIR 已設定）"""
+    debug_dir = _get_debug_dir()
+    if not debug_dir:
+        return
+    os.makedirs(debug_dir, exist_ok=True)
+    filepath = os.path.join(debug_dir, filename)
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(content)
+    _original_print(f"  💾 [DEBUG] 存檔: {filepath}")
+
+def _debug_log(msg):
+    """Debug log 輔助函數：將訊息 append 到 DEBUG_DIR/debug_log.txt"""
+    debug_dir = _get_debug_dir()
+    if not debug_dir:
+        return
+    os.makedirs(debug_dir, exist_ok=True)
+    timestamp = time.strftime('%H:%M:%S')
+    line = f"[{timestamp}] {msg}\n"
+    _original_print(f"  📍 [DEBUG] {msg}")
+    with open(os.path.join(debug_dir, 'debug_log.txt'), 'a', encoding='utf-8') as f:
+        f.write(line)
+
+def _debug_step(source: str, step_num: int, query: str, url: str,
+                status: str, candidate_urls: list = None,
+                selected_url: str = None, reason: str = "",
+                extra: dict = None):
+    """
+    結構化 Debug Trace — 每次搜尋動作都記錄一筆 JSON 到 debug_trace.jsonl
+    """
+    debug_dir = _get_debug_dir()
+    if not debug_dir:
+        return
+    os.makedirs(debug_dir, exist_ok=True)
+    record = {
+        "time": time.strftime('%H:%M:%S'),
+        "source": source,
+        "step": step_num,
+        "query": query,
+        "url": url,
+        "status": status,
+        "candidate_urls": candidate_urls or [],
+        "selected_url": selected_url or "",
+        "reason": reason,
+    }
+    if extra:
+        record.update(extra)
+    # 即時 print 到 terminal
+    icon = "✅" if status == "OK" else "❌"
+    _original_print(f"  {icon} [{source} Step {step_num}] query={query!r}")
+    _original_print(f"       URL  : {url}")
+    _original_print(f"       狀態 : {status}  —  {reason}")
+    if candidate_urls:
+        _original_print(f"       候選 URLs ({len(candidate_urls)} 筆):")
+        for u in candidate_urls:
+            _original_print(f"         • {u}")
+    if selected_url:
+        _original_print(f"       選定 URL : {selected_url}")
+    # append 到 JSONL
+    with open(os.path.join(debug_dir, 'debug_trace.jsonl'), 'a', encoding='utf-8') as f:
+        f.write(json.dumps(record, ensure_ascii=False) + '\n')
 
 _original_print = print
 def print(*args, **kwargs):
@@ -341,17 +411,20 @@ def search_pricecharting(name, number, set_code, is_alt_art=False, category="Pok
         valid_urls = matching_both + matching_name + matching_number
 
         if not valid_urls:
+            _debug_step("PriceCharting", 1, name_slug, search_url, "NO_MATCH", reason=f"沒有符合卡片名稱或編號的 URL")
             print(f"DEBUG: No PC product URL matched the card name '{name}' or number '{number_clean}'.")
-            return None, None
+            return None, None, None, []
 
         # ── 航海王版本選擇邏輯 ──
         # 如果是航海王，且有多個同時符合「名稱+編號+SetCode」的 URL，且不是 Alt-Art 明確標示，則返回待選清單
         if is_one_piece and len(matching_both) > 1:
+            _debug_step("PriceCharting", 1, name_slug, search_url, "AMBIGUOUS", candidate_urls=matching_both, reason="偵測到多個航海王候選版本")
             print(f"DEBUG: Ambiguous One Piece versions detected: {matching_both}")
             return None, None, None, matching_both
 
         # Prioritize the first valid match
         product_url = valid_urls[0]
+        selection_reason = "Default (First match)"
 
         # Filter based on is_alt_art
         if not is_alt_art:
@@ -361,6 +434,7 @@ def search_pricecharting(name, number, set_code, is_alt_art=False, category="Pok
                 if "manga" not in lower_u and "alternate-art" not in lower_u and \
                    "-sp" not in lower_u and "flagship" not in lower_u:
                     product_url = u
+                    selection_reason = "Normal Art Filter"
                     break
         else:
             for u in valid_urls:
@@ -369,8 +443,11 @@ def search_pricecharting(name, number, set_code, is_alt_art=False, category="Pok
                 if "manga" in lower_u or "alternate-art" in lower_u or \
                    "-sp" in lower_u:
                     product_url = u
+                    selection_reason = "Alt-Art Filter"
                     break
         
+        _debug_step("PriceCharting", 1, name_slug, search_url, "OK", selected_url=product_url, reason=selection_reason, candidate_urls=valid_urls)
+    
     # Final verification: Some completely unrelated cards get snagged if their ID happens to contain "226" inside it.
     if product_url:
         print(f"DEBUG: Selected PC product URL: {product_url}")
@@ -437,18 +514,10 @@ def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
                 
         if unique_matches:
             product_id = unique_matches[0][1] # default to first result
-            
-            # Filter logic
-            if not is_alt_art:
-                for title, pid in unique_matches:
-                    lower_t = title.lower()
-                    if "コミパラ" not in lower_t and "manga" not in lower_t and "パラレル" not in lower_t \
-                       and "-p" not in lower_t and "-sp" not in lower_t \
-                       and "sr-p" not in lower_t and "l-p" not in lower_t:
-                        product_id = pid
-                        break
-            else:
-                for title, pid in unique_matches:
+        if matches:
+            _debug_step("SNKRDUNK", snkr_step, term, search_url, "OK", reason=f"找到 {len(matches)} 個匹配項")
+            for title, pid in matches:
+                if is_alt_art:
                     lower_t = title.lower()
                     # 航海王模式：SR-P (Parallel) 與 L-P (Leader Parallel) 是明確的異圖標誌
                     if "コミパラ" in lower_t or "manga" in lower_t or "パラレル" in lower_t \
@@ -456,14 +525,16 @@ def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
                        or "sr-p" in lower_t or "l-p" in lower_t:
                         product_id = pid
                         break
+                else:
+                    product_id = pid
+                    break
             
-            break
+            if product_id:
+                break
+        else:
+            _debug_step("SNKRDUNK", snkr_step, term, search_url, "NO_RESULTS", reason="沒有搜尋結果")
         
         time.sleep(1)
-        
-    if not product_id:
-        return None, None, None
-        
     print(f"Found SNKRDUNK Product ID: {product_id}")
     
     sales_url = f"https://snkrdunk.com/apparels/{product_id}/sales-histories"
@@ -773,26 +844,25 @@ async def main():
 
     total = len(args.image_path)
     for idx, img_path in enumerate(args.image_path, start=1):
-        # ── 每張圖片獨立一個子資料夾，格式: 01_imagename ──
-        if debug_session_root:
-            img_stem = re.sub(r'[^A-Za-z0-9]', '_', os.path.splitext(os.path.basename(img_path))[0])[:40]
-            per_image_dir = os.path.join(debug_session_root, f"{idx:02d}_{img_stem}")
-            os.makedirs(per_image_dir, exist_ok=True)
-            DEBUG_DIR = per_image_dir
-            _original_print(f"\n{'='*52}")
-            _original_print(f"🔍 [{idx}/{total}] Debug 子資料夾: {per_image_dir}")
-        else:
-            DEBUG_DIR = None
-
         print(f"\n==================================================")
         print(f"🔄 [{idx}/{total}] 開始處理圖片: {img_path}")
         print(f"==================================================")
-        await process_single_image(img_path, api_key, args.out_dir, lang=args.lang)
+        await process_single_image(img_path, api_key, args.out_dir, lang=args.lang, 
+                                   debug_session_root=debug_session_root, 
+                                   batch_index=idx)
 
-async def process_single_image(image_path, api_key, out_dir=None, stream_mode=False, lang="zh"):
+async def process_single_image(image_path, api_key, out_dir=None, stream_mode=False, lang="zh", debug_session_root=None, batch_index=1):
     if not os.path.exists(image_path):
         print(f"❌ Error: 找不到圖片檔案 -> {image_path}", force=True)
         return
+    
+    # Setup per-image debug directory if root is provided
+    if debug_session_root:
+        img_stem = re.sub(r'[^A-Za-z0-9]', '_', os.path.splitext(os.path.basename(image_path))[0])[:40]
+        per_image_dir = os.path.join(debug_session_root, f"{batch_index:02d}_{img_stem}")
+        os.makedirs(per_image_dir, exist_ok=True)
+        _set_debug_dir(per_image_dir)
+        print(f"🔍 Debug 子資料夾: {per_image_dir}")
         
     # 第一階段：透過大模型辨識圖片資訊（非阻塞）
     card_info = await analyze_image_with_minimax(image_path, api_key, lang=lang)
@@ -1097,6 +1167,12 @@ async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_ur
         final_dest_dir = dest_dir if out_dir else '.'
         
         # We output all the scraped data to report_data.json
+        # Debug step2: 儲存爬蟲結果
+        _debug_log(f"Step 2 PC: {len(pc_records) if pc_records else 0} 筆")
+        _debug_log(f"Step 2 SNKR: {len(snkr_records) if snkr_records else 0} 筆")
+        _debug_save("step2_pc.json", json.dumps(pc_records or [], indent=2, ensure_ascii=False))
+        _debug_save("step2_snkr.json", json.dumps(snkr_records or [], indent=2, ensure_ascii=False))
+
         data_dump = {
             "card_info": card_info,
             "snkr_records": snkr_records if snkr_records else [],
@@ -1121,6 +1197,10 @@ async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_ur
             out_paths = await image_generator.generate_report(card_info, snkr_records, pc_records, out_dir=final_dest_dir)
             return (final_report, out_paths)
         
+    # Debug step3: 儲存最終報告
+    _debug_log("Step 3: 報告生成完成")
+    _debug_save("step3_report.md", final_report)
+    
     return final_report
 
 if __name__ == "__main__":
