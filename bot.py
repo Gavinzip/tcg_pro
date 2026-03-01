@@ -198,15 +198,19 @@ async def handle_image(attachment, message):
         # 處理「需要版本選擇」的狀態 (航海王)
         if isinstance(result, dict) and result.get("status") == "need_selection":
             candidates = result["candidates"]
+            # 去重並保留順序
+            candidates = list(dict.fromkeys(candidates))
+            
             await thread.send(f"⚠️ 偵測到**航海王**有多個候選版本，請根據下方預覽圖選擇正確的版本：")
             
-            # 抓取每個候選版本的縮圖並以 Embed 形式呈現
+            # 抓取每個候選版本的縮圖並以 Embed 呈現
             loading_msg = await thread.send("🖼️ 正在抓取版本預覽中...")
             loop = asyncio.get_running_loop()
             
             for i, url in enumerate(candidates, start=1):
-                # 再次利用 _fetch_pc_prices_from_url 抓取圖片 URL (不帶 md_content 會重新 fetch)
-                _re, _url, thumb_url = await loop.run_in_executor(None, market_report_vision._fetch_pc_prices_from_url, url)
+                # 這裡改為順序執行並加上 skip_hi_res=True 以加快速度
+                print(f"DEBUG: Fetching thumbnail for candidate {i}: {url}")
+                _re, _url, thumb_url = await loop.run_in_executor(None, lambda: market_report_vision._fetch_pc_prices_from_url(url, skip_hi_res=True))
                 slug = url.split('/')[-1]
                 
                 embed = discord.Embed(title=f"版本 #{i}", description=f"Slug: `{slug}`", url=url, color=0x3498db)
@@ -214,6 +218,7 @@ async def handle_image(attachment, message):
                     embed.set_thumbnail(url=thumb_url)
                 else:
                     embed.description += "\n*(無法取得預覽圖)*"
+                    print(f"DEBUG: Failed to find thumbnail for {url}")
                 await thread.send(embed=embed)
 
             await loading_msg.delete()

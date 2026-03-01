@@ -102,7 +102,7 @@ def extract_price(price_str):
     except:
         return 0.0
 
-def _fetch_pc_prices_from_url(product_url, md_content=None):
+def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False):
     """
     Given a PriceCharting product URL, fetch (if md_content is None) and parse it.
     Returns (records, resolved_url, pc_img_url).
@@ -111,7 +111,10 @@ def _fetch_pc_prices_from_url(product_url, md_content=None):
         md_content = fetch_jina_markdown(product_url)
     
     if not md_content:
+        print(f"DEBUG: Failed to get markdown for {product_url}")
         return [], product_url, None
+
+    print(f"DEBUG: Parsing PriceCharting page: {product_url} (length: {len(md_content)})")
 
     lines = md_content.split('\n')
     records = []
@@ -198,25 +201,32 @@ def _fetch_pc_prices_from_url(product_url, md_content=None):
     records.sort(key=lambda x: x['date'], reverse=True)
     
     pc_img_url = None
+    # 擴展 regex 以匹配更多可能的圖片路徑格式
     img_patterns = [
         r'!\[.*?\]\((https://storage\.googleapis\.com/images\.pricecharting\.com/[^/)]+/\d+\.jpg)\)',
         r'!\[.*?\]\((https://product-images\.s3\.amazonaws\.com/[^\)]+)\)',
-        r'!\[.*?\]\((https://[^)]+\.jpg[^\)]*)\)',
-        r'!\[.*?\]\((https://[^)]+\.png[^\)]*)\)',
-        r'!\[.*?\]\((https://[^)]+\.webp[^\)]*)\)',
+        r'!\[.*?\]\((https://images\.pricecharting\.com/[^\)]+)\)',
+        r'!\[.*?\]\((https://[^)]+?pricecharting\.com/[^)]+?\.(?:jpg|png|webp)[^)]*)\)',
+        r'!\[.*?\]\((https://[^)]+?\.(?:jpg|png|webp)[^)]*)\)',
     ]
     for pat in img_patterns:
         m = re.search(pat, md_content)
         if m:
             pc_img_url = m.group(1)
-            hiRes_url = re.sub(r'/([\d]+)\.jpg$', '/1600.jpg', pc_img_url)
-            if hiRes_url != pc_img_url:
-                try:
-                    if requests.head(hiRes_url, timeout=5).status_code == 200:
-                        pc_img_url = hiRes_url
-                except: pass
+            print(f"DEBUG: Found image URL: {pc_img_url}")
+            if not skip_hi_res:
+                hiRes_url = re.sub(r'/([\d]+)\.jpg$', '/1600.jpg', pc_img_url)
+                if hiRes_url != pc_img_url:
+                    try:
+                        if requests.head(hiRes_url, timeout=5).status_code == 200:
+                            pc_img_url = hiRes_url
+                            print(f"DEBUG: Upgraded to 1600px: {pc_img_url}")
+                    except: pass
             break
             
+    if not pc_img_url:
+        print(f"DEBUG: No image found in markdown for {product_url}")
+
     return records, product_url, pc_img_url
 
 def search_pricecharting(name, number, set_code, is_alt_art=False, category="Pokemon"):
