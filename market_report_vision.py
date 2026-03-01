@@ -442,16 +442,16 @@ def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
                     lower_t = title.lower()
                     if "コミパラ" not in lower_t and "manga" not in lower_t and "パラレル" not in lower_t \
                        and "-p" not in lower_t and "-sp" not in lower_t \
-                       and "sr-p" not in lower_t:
+                       and "sr-p" not in lower_t and "l-p" not in lower_t:
                         product_id = pid
                         break
             else:
                 for title, pid in unique_matches:
                     lower_t = title.lower()
-                    # 航海王模式：SR-P 是明確的異圖標誌
+                    # 航海王模式：SR-P (Parallel) 與 L-P (Leader Parallel) 是明確的異圖標誌
                     if "コミパラ" in lower_t or "manga" in lower_t or "パラレル" in lower_t \
                        or "-p" in lower_t or "-sp" in lower_t \
-                       or "sr-p" in lower_t:
+                       or "sr-p" in lower_t or "l-p" in lower_t:
                         product_id = pid
                         break
             
