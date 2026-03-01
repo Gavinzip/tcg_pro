@@ -137,6 +137,8 @@ def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False):
                 detected_grade = None
                 if re.search(r'(psa|cgc|bgs|grade|gem)10', title_clean) or ("psa" in title_clean and "10" in title_clean):
                     detected_grade = "PSA 10"
+                elif re.search(r'bgs\s*9\.5', title_clean):
+                    detected_grade = "BGS 9.5"
                 elif re.search(r'(psa|cgc|bgs|grade|gem)9', title_clean) or ("psa" in title_clean and "9" in title_clean):
                     detected_grade = "PSA 9"
                 elif re.search(r'(psa|cgc|bgs|grade|gem)8', title_clean) or ("psa" in title_clean and "8" in title_clean):
@@ -875,33 +877,33 @@ async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_ur
     
     # --- 重要：過濾文字報告專用的成交紀錄 ---
     # 海報製作需要完整 records (含 PSA 10, 9, Ungraded)，但文字報告只需目標等級
+    # 針對航海王 BGS 等級特別要求：同時顯示 BGS 9.5 與 PSA 10 各 10 筆
+    is_one_piece = (category.lower() == "one piece")
     is_bgs_grade = grade.upper().startswith('BGS')
-    is_one_piece_bgs = (category.lower() == "one piece") and is_bgs_grade
-
-    # PriceCharting: 篩選目標等級
-    report_pc_records = [r for r in (pc_records or []) if r.get('grade') == grade]
-    # One Piece BGS 補充：不足 10 筆時，用 PSA 10 補齊
-    if is_one_piece_bgs and len(report_pc_records) < 10:
-        psa10_pc = [r for r in (pc_records or []) if 'PSA 10' in r.get('grade', '') or r.get('grade', '') in ('PSA10',)]
-        need = 10 - len(report_pc_records)
-        for r in psa10_pc[:need]:
-            report_pc_records.append({**r, 'grade': f"{r['grade']} 「參考 PSA 10」"})
-
-    if '10' in grade:
-        valid_snkr_grades = ['S', 'PSA10', 'PSA 10']
-    elif 'BGS' in grade.upper():
-        valid_snkr_grades = [grade, grade.replace(' ', ''), 'BGS9.5', 'BGS 9.5', 'BGS10', 'BGS 10']
-    elif grade.lower() == 'ungraded':
-        valid_snkr_grades = ['A']
+    
+    if is_one_piece and is_bgs_grade:
+        # PriceCharting: 抓取 BGS 9.5 和 PSA 10 (即使使用者是 BGS 10 也參考這兩項)
+        bgs_pc = [r for r in (pc_records or []) if "BGS 9.5" in r.get('grade', '').upper() or "BGS9.5" in r.get('grade', '').upper()]
+        psa_pc = [r for r in (pc_records or []) if "PSA 10" in r.get('grade', '').upper() or "PSA10" in r.get('grade', '').upper()]
+        report_pc_records = bgs_pc[:10] + psa_pc[:10]
+        
+        # SNKRDUNK: 抓取 BGS 9.5 和 PSA 10 (S)
+        bgs_snkr = [r for r in (snkr_records or []) if r.get('grade') in ('BGS 9.5', 'BGS9.5', 'BGS 10', 'BGS10')]
+        psa_snkr = [r for r in (snkr_records or []) if r.get('grade') in ('S', 'PSA 10', 'PSA10')]
+        report_snkr_records = bgs_snkr[:10] + psa_snkr[:10]
     else:
-        valid_snkr_grades = [grade, grade.replace(' ', '')]
-    report_snkr_records = [r for r in (snkr_records or []) if r.get('grade') in valid_snkr_grades]
-    # One Piece BGS 補充：不足 10 筆時，用 PSA 10 補齊
-    if is_one_piece_bgs and len(report_snkr_records) < 10:
-        psa10_snkr = [r for r in (snkr_records or []) if r.get('grade') in ('S', 'PSA10', 'PSA 10')]
-        need = 10 - len(report_snkr_records)
-        for r in psa10_snkr[:need]:
-            report_snkr_records.append({**r, 'grade': f"{r['grade']} 「參考 PSA 10」"})
+        # PriceCharting: 篩選目標等級
+        report_pc_records = [r for r in (pc_records or []) if r.get('grade') == grade]
+        # SNKRDUNK: 篩選目標等級
+        if '10' in grade:
+            valid_snkr_grades = ['S', 'PSA10', 'PSA 10']
+        elif 'BGS' in grade.upper():
+            valid_snkr_grades = [grade, grade.replace(' ', ''), 'BGS9.5', 'BGS 9.5', 'BGS10', 'BGS 10']
+        elif grade.lower() == 'ungraded':
+            valid_snkr_grades = ['A']
+        else:
+            valid_snkr_grades = [grade, grade.replace(' ', '')]
+        report_snkr_records = [r for r in (snkr_records or []) if r.get('grade') in valid_snkr_grades]
 
 
     c_name_display = c_name if c_name else jp_name if jp_name else name
