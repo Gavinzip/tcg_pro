@@ -301,7 +301,7 @@ def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False):
 
     return records, product_url, pc_img_url
 
-def search_pricecharting(name, number, set_code, is_alt_art=False, category="Pokemon"):
+def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False, category="Pokemon"):
     # Basic Name cleaning (strip parentheses like "Queen (Flagship Battle Top 8 Prize)")
     name_query = re.sub(r'\(.*?\)', '', name).strip()
 
@@ -434,30 +434,30 @@ def search_pricecharting(name, number, set_code, is_alt_art=False, category="Pok
                 if "manga" not in lower_u and "alternate-art" not in lower_u and \
                    "-sp" not in lower_u and "flagship" not in lower_u:
                     product_url = u
-                    selection_reason = "Normal Art Filter (無 manga/alternate-art 關鍵字)"
+                    selection_reason = "Normal Art Filter (無 manga/alternate-art/flagship 關鍵字)"
                     break
         else:
             for u in valid_urls:
                 lower_u = u.replace('[', '').replace(']', '').lower()
                 # 航海王異圖版優先尋找包含這些關鍵字的
                 if "manga" in lower_u or "alternate-art" in lower_u or \
-                   "-sp" in lower_u:
+                   "-sp" in lower_u or "flagship" in lower_u:
                     product_url = u
-                    selection_reason = "Alt-Art Filter (偵測到 Alt-Art 關鍵字)"
+                    selection_reason = "Alt-Art Filter (偵測到 Manga/Alternate-Art/SP/Flagship 關鍵字)"
                     break
         
         _debug_step("PriceCharting", 1, name_slug, search_url, "OK", selected_url=product_url, reason=selection_reason, candidate_urls=valid_urls)
     
     # Final verification: Some completely unrelated cards get snagged if their ID happens to contain "226" inside it.
     if product_url:
-        print(f"DEBUG: Selected PC product URL: {product_url}")
-        return _fetch_pc_prices_from_url(product_url)
+        print(f"DEBUG: Selected PC product URL: {product_url} ({selection_reason})")
+        return _fetch_pc_prices_from_url(product_url, target_grade=target_grade)
     else:
         print(f"DEBUG: Landed directly on PC product page")
         return _fetch_pc_prices_from_url(search_url, md_content=md_content)
 
 
-def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
+def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art=False):
     # Strip prefix like "No." (e.g. "No.025" -> "25"), then apply lstrip('0')
     _num_raw = number.split('/')[0]
     _digits_only = re.search(r'\d+', _num_raw)
@@ -467,15 +467,25 @@ def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
 
     terms_to_try = []
     
+    en_name_query = re.sub(r'\(.*?\)', '', en_name).strip()
+    jp_name_query = re.sub(r'\(.*?\)', '', jp_name).strip() if jp_name else ""
+
+    terms_to_try = []
+    
     # SNKRDUNK search is highly accurate with Set Code (e.g. "ピカチュウ S8a-G", "ピカチュウ SV-P")
     if set_code:
-        if jp_name:
-            terms_to_try.append(f"{jp_name} {set_code}")
-        terms_to_try.append(f"{en_name} {set_code}")
+        if jp_name_query:
+            terms_to_try.append(f"{jp_name_query} {set_code}")
+        terms_to_try.append(f"{en_name_query} {set_code}")
         
-    if jp_name:
-        terms_to_try.append(f"{jp_name} {number_padded}")
-    terms_to_try.append(f"{en_name} {number_padded}")
+    if jp_name_query:
+        if number_padded != "000":
+            terms_to_try.append(f"{jp_name_query} {number_padded}")
+        terms_to_try.append(jp_name_query)
+
+    if number_padded != "000":
+        terms_to_try.append(f"{en_name_query} {number_padded}")
+    terms_to_try.append(en_name_query)
     
     product_id = None
     
@@ -575,12 +585,12 @@ def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
                     break
                     
             if grade_found and price_jpy > 0:
-                parsed_grade = grade_found.strip()
-                if parsed_grade:
+                snkr_target_grade = "A" if target_grade.lower() == "ungraded" else target_grade
+                if snkr_target_grade.replace(" ", "").lower() == grade_found.replace(" ", "").lower():
                     records.append({
                         "date": date_found,
                         "price": price_jpy,
-                        "grade": parsed_grade
+                        "grade": snkr_target_grade
                     })
                 
     resolved_url = f"https://snkrdunk.com/apparels/{product_id}" if product_id else None
