@@ -354,14 +354,20 @@ def search_pricecharting(name, number, set_code, is_alt_art=False, category="Pok
         # Filter based on is_alt_art
         if not is_alt_art:
             for u in valid_urls:
-                lower_u = u.lower()
-                if "manga" not in lower_u and "parallel" not in lower_u and "alt-art" not in lower_u and "-sp" not in lower_u:
+                lower_u = u.replace('[', '').replace(']', '').lower()
+                # 航海王普通版不應包含以下關鍵字
+                if "manga" not in lower_u and "parallel" not in lower_u and \
+                   "alt-art" not in lower_u and "alternate-art" not in lower_u and \
+                   "-sp" not in lower_u and "flagship" not in lower_u:
                     product_url = u
                     break
         else:
             for u in valid_urls:
-                lower_u = u.lower()
-                if "manga" in lower_u or "parallel" in lower_u or "alt-art" in lower_u or "-sp" in lower_u:
+                lower_u = u.replace('[', '').replace(']', '').lower()
+                # 航海王異圖版優先尋找包含這些關鍵字的
+                if "manga" in lower_u or "parallel" in lower_u or \
+                   "alt-art" in lower_u or "alternate-art" in lower_u or \
+                   "-sp" in lower_u:
                     product_url = u
                     break
         
@@ -437,14 +443,17 @@ def search_snkrdunk(en_name, jp_name, number, set_code, is_alt_art=False):
                 for title, pid in unique_matches:
                     lower_t = title.lower()
                     if "コミパラ" not in lower_t and "manga" not in lower_t and "パラレル" not in lower_t \
-                       and "-p" not in lower_t and "-sp" not in lower_t and "parallel" not in lower_t:
+                       and "-p" not in lower_t and "-sp" not in lower_t and "parallel" not in lower_t \
+                       and "sr-p" not in lower_t:
                         product_id = pid
                         break
             else:
                 for title, pid in unique_matches:
                     lower_t = title.lower()
+                    # 航海王模式：SR-P 是明確的異圖標誌
                     if "コミパラ" in lower_t or "manga" in lower_t or "パラレル" in lower_t \
-                       or "-p" in lower_t or "-sp" in lower_t or "parallel" in lower_t:
+                       or "-p" in lower_t or "-sp" in lower_t or "parallel" in lower_t \
+                       or "sr-p" in lower_t:
                         product_id = pid
                         break
             
