@@ -327,7 +327,7 @@ def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False, t
 
     return records, product_url, pc_img_url
 
-def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False, category="Pokemon"):
+def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False, category="Pokemon", is_flagship=False):
     # Basic Name cleaning (strip parentheses like "Queen (Flagship Battle Top 8 Prize)")
     name_query = re.sub(r'\(.*?\)', '', name).strip()
 
@@ -449,8 +449,16 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
         product_url = valid_urls[0]
         selection_reason = "Default (First match)"
 
-        # Filter based on is_alt_art
-        if not is_alt_art:
+        # Filter based on is_alt_art / is_flagship (features-based override 主導)
+        if is_flagship:
+            # 旗艦賽獎品卡：尋找包含 flagship 的 URL
+            for u in valid_urls:
+                lower_u = u.replace('[', '').replace(']', '').lower()
+                if "flagship" in lower_u:
+                    product_url = u
+                    selection_reason = "Flagship Filter (偵測到 Flagship Battle 關鍵字)"
+                    break
+        elif not is_alt_art:
             for u in valid_urls:
                 lower_u = u.replace('[', '').replace(']', '').lower()
                 # 航海王普通版不應包含以下關鍵字
@@ -463,10 +471,9 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
             for u in valid_urls:
                 lower_u = u.replace('[', '').replace(']', '').lower()
                 # 航海王異圖版優先尋找包含這些關鍵字的
-                if "manga" in lower_u or "alternate-art" in lower_u or \
-                   "-sp" in lower_u or "flagship" in lower_u:
+                if "manga" in lower_u or "alternate-art" in lower_u or "-sp" in lower_u:
                     product_url = u
-                    selection_reason = "Alt-Art Filter (偵測到 Manga/Alternate-Art/SP/Flagship 關鍵字)"
+                    selection_reason = "Alt-Art Filter (偵測到 Manga/Alternate-Art/SP 關鍵字)"
                     break
         
         _debug_step("PriceCharting", 1, name_slug, search_url, "OK", selected_url=product_url, reason=selection_reason, candidate_urls=valid_urls)
@@ -932,13 +939,27 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     competitive_freq = card_info.get("competitive_freq", "Unknown")
     is_alt_art = card_info.get("is_alt_art", False)
     
+    # ── features-based override (最高優先級) ──────────────────────────────
+    features_lower = features.lower() if features else ""
+    is_flagship = any(kw in features_lower for kw in ["flagship", "旗艦賽", "flagship battle"])
+    if any(kw in features_lower for kw in [
+        "leader parallel", "sr parallel", "sr-p", "l-p",
+        "リーダーパラレル", "コミパラ", "パラレル",
+        "alternate art", "parallel art", "manga"
+    ]):
+        is_alt_art = True
+        _debug_log(f"✨ features-based override: is_alt_art=True (從 features 偵測到異圖關鍵字)")
+    if is_flagship:
+        is_alt_art = True
+        _debug_log(f"✨ features-based override: is_flagship=True (從 features 偵測到旗艦賽關鍵字)")
+    # ────────────────────────────────────────────────────────────
     # 第二階段：執行爬蟲抓取資料
     print("--------------------------------------------------")
     print(f"🌐 正在從網路(PC & SNKRDUNK)抓取市場行情 (異圖/特殊版: {is_alt_art})...")
     loop = asyncio.get_running_loop()
     # Using independent copy_context().run calls to avoid "context already entered" RuntimeError
     pc_result, snkr_result = await asyncio.gather(
-        loop.run_in_executor(None, contextvars.copy_context().run, search_pricecharting, name, number, set_code, grade, is_alt_art, category),
+        loop.run_in_executor(None, contextvars.copy_context().run, search_pricecharting, name, number, set_code, grade, is_alt_art, category, is_flagship),
         loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art),
     )
 
