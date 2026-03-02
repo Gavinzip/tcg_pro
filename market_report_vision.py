@@ -960,7 +960,7 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     # Using independent copy_context().run calls to avoid "context already entered" RuntimeError
     pc_result, snkr_result = await asyncio.gather(
         loop.run_in_executor(None, contextvars.copy_context().run, search_pricecharting, name, number, set_code, grade, is_alt_art, category, is_flagship),
-        loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art, card_language),
+        loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art, card_language, snkr_variant_kws),
     )
 
     pc_records, pc_url, pc_img_url = pc_result if pc_result else (None, None, None)
