@@ -249,32 +249,35 @@ async def on_ready():
         print(f"⚠️ 全域同步失敗: {e}")
 
 class PCSelect(discord.ui.Select):
-    def __init__(self, candidates):
+    def __init__(self, candidates, lang="zh"):
         options = []
-        for c in candidates[:25]:
-            label = c.split('/')[-1][:100]
-            options.append(discord.SelectOption(label=label, value=c[:100], description=c[:100]))
-        super().__init__(placeholder="請選擇 PriceCharting 的正確版本...", min_values=1, max_values=1, options=options)
+        for i, c in enumerate(candidates[:25]):
+            # Use index as value to avoid 100 char limit
+            label = f"#{i+1}: " + c.split('/')[-1][:95]
+            options.append(discord.SelectOption(label=label, value=str(i), description=c[:100]))
+        placeholder = "請選擇 PriceCharting 候選版本..." if lang == "zh" else "Select PriceCharting Version..."
+        super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        self.view.selected_pc = self.values[0]
-        for orig in self.view.pc_candidates:
-            if orig.startswith(self.values[0]):
-                self.view.selected_pc = orig
-                break
+        idx = int(self.values[0])
+        self.view.selected_pc = self.view.pc_candidates[idx]
         await interaction.response.defer()
 
 class SnkrSelect(discord.ui.Select):
-    def __init__(self, candidates):
+    def __init__(self, candidates, lang="zh"):
         options = []
-        for c in candidates[:25]:
-            label = c.split('/')[-1] if not " — " in c else c.split(" — ")[1][:100]
-            val = c.split(" — ")[0][:100]
-            options.append(discord.SelectOption(label=label, value=val))
-        super().__init__(placeholder="請選擇 SNKRDUNK 的正確版本...", min_values=1, max_values=1, options=options)
+        for i, c in enumerate(candidates[:25]):
+            # Candidates are "URL — Title"
+            title = c.split(" — ")[1] if " — " in c else c
+            label = f"#{i+1}: " + title[:95]
+            options.append(discord.SelectOption(label=label, value=str(i), description=title[:100]))
+        placeholder = "請選擇 SNKRDUNK 候選版本..." if lang == "zh" else "Select SNKRDUNK Version..."
+        super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        self.view.selected_snkr = self.values[0]
+        idx = int(self.values[0])
+        # Only the URL part for searching
+        self.view.selected_snkr = self.view.snkr_candidates[idx].split(" — ")[0]
         await interaction.response.defer()
 
 class ManualCandidateView(discord.ui.View):
@@ -289,9 +292,9 @@ class ManualCandidateView(discord.ui.View):
         self.original_message = None
         
         if pc_candidates:
-            self.add_item(PCSelect(pc_candidates))
+            self.add_item(PCSelect(pc_candidates, lang=lang))
         if snkr_candidates:
-            self.add_item(SnkrSelect(snkr_candidates))
+            self.add_item(SnkrSelect(snkr_candidates, lang=lang))
             
     @discord.ui.button(label="確認選擇並生成報告", style=discord.ButtonStyle.primary, row=2)
     async def submit(self, interaction: discord.Interaction, button: discord.ui.Button):
