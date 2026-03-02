@@ -108,11 +108,11 @@ async def handle_image(attachment, message, lang="zh"):
     4. （非同步）生成海報 → 生成完成後補傳
     """
     # 根據語言設定討論串名稱
-    thread_name = f"卡片分析：{attachment.filename}" if lang == "zh" else f"Card Analysis: {attachment.filename}"
+    thread_name = "卡片分析報表" if lang == "zh" else "Card Analysis Report"
     
     # 1. 建立討論串並加入使用者
     # 先發送一個初始訊息作為討論串的起點
-    init_msg = await message.reply(f"🃏 收到圖片：**{attachment.filename}**，分析語言：**{'中文' if lang == 'zh' else 'English'}**...")
+    init_msg = await message.reply(f"🃏 收到圖片，分析語言：**{'中文' if lang == 'zh' else 'English'}**...")
     
     thread = await init_msg.create_thread(name=thread_name, auto_archive_duration=60)
     
