@@ -487,7 +487,7 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
         return _fetch_pc_prices_from_url(search_url, md_content=md_content, target_grade=target_grade)
 
 
-def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art=False):
+def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art=False, card_language="JP"):
     # Strip prefix like "No." (e.g. "No.025" -> "25"), then apply lstrip('0')
     _num_raw = number.split('/')[0]
     _digits_only = re.search(r'\d+', _num_raw)
@@ -960,7 +960,7 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     # Using independent copy_context().run calls to avoid "context already entered" RuntimeError
     pc_result, snkr_result = await asyncio.gather(
         loop.run_in_executor(None, contextvars.copy_context().run, search_pricecharting, name, number, set_code, grade, is_alt_art, category, is_flagship),
-        loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art),
+        loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art, card_language),
     )
 
     pc_records, pc_url, pc_img_url = pc_result if pc_result else (None, None, None)
