@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import discord
+from discord import app_commands
 import os
 import shutil
 import tempfile
@@ -47,6 +48,7 @@ TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
+tree = app_commands.CommandTree(client)
 
 
 def smart_split(text, limit=1900):
@@ -238,7 +240,146 @@ async def handle_image(attachment, message, lang="zh"):
 
 @client.event
 async def on_ready():
+    # Sync global commands to remove stale ones and apply new ones
+    await tree.sync()
     print(f'✅ 機器人已成功登入為 {client.user}')
+    print(f"✅ Slash Commands 已同步完成")
+
+class PCSelect(discord.ui.Select):
+    def __init__(self, candidates):
+        options = []
+        for c in candidates[:25]:
+            label = c.split('/')[-1][:100]
+            options.append(discord.SelectOption(label=label, value=c[:100], description=c[:100]))
+        super().__init__(placeholder="請選擇 PriceCharting 的正確版本...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        self.view.selected_pc = self.values[0]
+        for orig in self.view.pc_candidates:
+            if orig.startswith(self.values[0]):
+                self.view.selected_pc = orig
+                break
+        await interaction.response.defer()
+
+class SnkrSelect(discord.ui.Select):
+    def __init__(self, candidates):
+        options = []
+        for c in candidates[:25]:
+            label = c.split('/')[-1] if not " — " in c else c.split(" — ")[1][:100]
+            val = c.split(" — ")[0][:100]
+            options.append(discord.SelectOption(label=label, value=val))
+        super().__init__(placeholder="請選擇 SNKRDUNK 的正確版本...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        self.view.selected_snkr = self.values[0]
+        await interaction.response.defer()
+
+class ManualCandidateView(discord.ui.View):
+    def __init__(self, card_info, pc_candidates, snkr_candidates, lang="zh"):
+        super().__init__(timeout=600)
+        self.card_info = card_info
+        self.pc_candidates = pc_candidates
+        self.snkr_candidates = snkr_candidates
+        self.lang = lang
+        self.selected_pc = pc_candidates[0] if pc_candidates else None
+        self.selected_snkr = snkr_candidates[0].split(" — ")[0] if snkr_candidates else None
+        self.original_message = None
+        
+        if pc_candidates:
+            self.add_item(PCSelect(pc_candidates))
+        if snkr_candidates:
+            self.add_item(SnkrSelect(snkr_candidates))
+            
+    @discord.ui.button(label="確認選擇並生成報告", style=discord.ButtonStyle.primary, row=2)
+    async def submit(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("🔍 正在生成報告與海報，請稍候...", ephemeral=False)
+        self.stop()
+        for child in self.children:
+            child.disabled = True
+        if self.original_message:
+            await self.original_message.edit(view=self)
+        asyncio.create_task(self.generate_report(interaction.channel))
+        
+    async def generate_report(self, channel):
+        card_out_dir = tempfile.mkdtemp(prefix=f"tcg_manual_{id(self)}_")
+        try:
+            # 1. Generate text report and poster_data
+            result = await market_report_vision.generate_report_from_selected(
+                self.card_info, self.selected_pc, self.selected_snkr, out_dir=card_out_dir, lang=self.lang
+            )
+            
+            report_text, poster_data = result if isinstance(result, tuple) else (result, None)
+            
+            if report_text:
+                for chunk in smart_split(report_text):
+                    await channel.send(chunk)
+            
+            # 2. Generate and send posters
+            if poster_data:
+                wait_msg = "🖼️ Generating poster..." if self.lang == "en" else "🖼️ 海報生成中..."
+                await channel.send(wait_msg)
+                out_paths = await market_report_vision.generate_posters(poster_data)
+                if out_paths:
+                    for path in out_paths:
+                        if os.path.exists(path):
+                            await channel.send(file=discord.File(path))
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            await channel.send(f"❌ 執行異常：\n```python\n{error_trace[-1900:]}\n```")
+        finally:
+            shutil.rmtree(card_out_dir, ignore_errors=True)
+
+@tree.command(name="manual_analyze", description="手動選擇版本生成報告與海報")
+async def manual_analyze(interaction: discord.Interaction, image: discord.Attachment, lang: str = "zh"):
+    if not any(image.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.webp']):
+        await interaction.response.send_message("❌ 請上傳有效的圖片", ephemeral=True)
+        return
+        
+    await interaction.response.send_message(f"🔍 收到圖片，正在分析中 (語言: {lang})，請稍候...", ephemeral=False)
+    
+    temp_dir = tempfile.gettempdir()
+    img_path = os.path.join(temp_dir, f"manual_{image.id}_{image.filename}")
+    await image.save(img_path)
+    
+    try:
+        api_key = os.getenv("MINIMAX_API_KEY")
+        res = await market_report_vision.process_image_for_candidates(img_path, api_key)
+        if not res or len(res) < 2:
+            await interaction.followup.send(f"❌ 分析失敗: {res[1] if res else '未知錯誤'}")
+            return
+            
+        card_info, candidates = res
+        pc_candidates = candidates.get("pc", [])
+        snkr_candidates = candidates.get("snkr", [])
+        
+        if not pc_candidates and not snkr_candidates:
+            await interaction.followup.send("❌ 找不到任何符合的卡片候補。")
+            return
+            
+        view = ManualCandidateView(card_info, pc_candidates, snkr_candidates, lang=lang)
+        info_text = f"**手動模式：候選卡片選擇**\n"
+        info_text += f"> **名稱:** {card_info.get('name', '')} ({card_info.get('jp_name', '')})\n"
+        info_text += f"> **編號:** {card_info.get('number', '')}\n"
+        info_text += "請選擇正確版本後按下確認："
+        
+        view_msg = await interaction.followup.send(content=info_text, view=view, wait=True)
+        view.original_message = view_msg
+        
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        await interaction.followup.send(f"❌ 發生異常：\n```python\n{error_trace[-1900:]}\n```")
+    finally:
+        if os.path.exists(img_path):
+            os.remove(img_path)
+
+@tree.command(name="clear_stale_commands", description="[Owner] 清除所有全域斜線指令並重置 (解決冗餘指令問題)")
+async def clear_stale(interaction: discord.Interaction):
+    await interaction.response.send_message("⚙️ 正在清除全域指令並重新同步，請稍候...", ephemeral=True)
+    tree.clear_commands(guild=None)
+    await tree.sync()
+    # Re-add current commands and sync again to be sure
+    # In a real scenario, you'd just restart, but for now we sync the empty tree then the user can restart.
+    await interaction.followup.send("✅ 已清除全域指令。請重新啟動機器人以載入正確指令。", ephemeral=True)
 
 @client.event
 async def on_message(message):

@@ -302,7 +302,7 @@ def extract_price(price_str):
     except:
         return 0.0
 
-def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False, category="Pokemon", is_flagship=False):
+def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False, category="Pokemon", is_flagship=False, return_candidates=False):
     # Basic Name cleaning (strip parentheses like "Queen (Flagship Battle Top 8 Prize)")
     name_query = re.sub(r'\(.*?\)', '', name).strip()
     
@@ -432,6 +432,9 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
 
         # 合併：最高優先為同時符合的，依序遞減
         valid_urls = matching_both + matching_name + matching_number
+        
+        if return_candidates:
+            return valid_urls, None, None
                 
         if not valid_urls:
             _debug_step("PriceCharting", pc_step + 1,
@@ -492,7 +495,7 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
     
     return records, resolved_url, pc_img_url
 
-def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art=False, card_language="JP", snkr_variant_kws=None):
+def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art=False, card_language="JP", snkr_variant_kws=None, return_candidates=False):
     # Strip prefix like "No." (e.g. "No.025" -> "25"), then apply lstrip('0')
     if '-' in number and re.search(r'[A-Z]+\d+-\d+', number):
         number_clean = number.split('-')[-1].lstrip('0')
@@ -580,6 +583,9 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
         unique_matches = filtered_by_number
                 
         if unique_matches:
+            if return_candidates:
+                return [f"{f'https://snkrdunk.com/apparels/{pid}'} — {t}" for t, pid in unique_matches], None, None
+                
             product_id = unique_matches[0][1] # default to first result
             selection_reason = "Default (First match)"
             
@@ -1356,6 +1362,138 @@ async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_ur
     _debug_save("step3_report.md", final_report)
     
     return final_report
+
+async def process_image_for_candidates(image_path, api_key):
+    """(Manual Mode) Analyzes image and returns URL candidates from PC and SNKRDUNK."""
+    if not os.path.exists(image_path):
+        return None, "找不到圖片檔案"
+        
+    card_info = await analyze_image_with_minimax(image_path, api_key)
+    if not card_info:
+        return None, "卡片影像辨識失敗"
+    
+    name = card_info.get("name", "Unknown")
+    set_code = card_info.get("set_code", "")
+    jp_name = card_info.get("jp_name", "")
+    number = str(card_info.get("number", "0"))
+    grade = card_info.get("grade", "Ungraded")
+    category = card_info.get("category", "Pokemon")
+    features = card_info.get("features", "Unknown")
+    is_alt_art = card_info.get("is_alt_art", False)
+    
+    features_lower = features.lower() if features else ""
+    is_flagship = any(kw in features_lower for kw in ["flagship", "旗艦賽", "flagship battle"])
+    if any(kw in features_lower for kw in [
+        "leader parallel", "sr parallel", "sr-p", "l-p",
+        "リーダーパラレル", "コミパラ", "パラレル",
+        "alternate art", "parallel art", "manga"
+    ]):
+        is_alt_art = True
+    if is_flagship:
+        is_alt_art = True
+        
+    is_one_piece_cat = (category.lower() == "one piece")
+    card_language = "JP"
+    if is_one_piece_cat and any(kw in features_lower for kw in ["英文版", "english version", "[en]"]):
+        card_language = "EN"
+        
+    snkr_variant_kws = []
+    if is_one_piece_cat and is_alt_art:
+        if is_flagship:
+            snkr_variant_kws = ["フラッグシップ", "フラシ", "flagship"]
+        elif any(kw in features_lower for kw in ["sr parallel", "sr-p", "スーパーレアパラレル"]):
+            snkr_variant_kws = ["sr-p"]
+        elif any(kw in features_lower for kw in ["leader parallel", "l-p", "リーダーパラレル"]):
+            snkr_variant_kws = ["l-p"]
+        elif any(kw in features_lower for kw in ["コミパラ", "manga", "コミックパラレル"]):
+            snkr_variant_kws = ["コミパラ", "コミック"]
+        elif any(kw in features_lower for kw in ["パラレル", "sr parallel", "parallel art"]):
+            snkr_variant_kws = ["パラレル", "-p"]
+
+    loop = asyncio.get_running_loop()
+    pc_result, snkr_result = await asyncio.gather(
+        loop.run_in_executor(None, contextvars.copy_context().run, search_pricecharting, name, number, set_code, grade, is_alt_art, category, is_flagship, True),
+        loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art, card_language, snkr_variant_kws, True),
+    )
+    
+    pc_candidates = pc_result[0] if pc_result else []
+    snkr_candidates = snkr_result[0] if snkr_result else []
+    
+    return card_info, {
+        "pc": pc_candidates,
+        "snkr": snkr_candidates
+    }
+
+def _fetch_snkr_prices_from_url_direct(product_url):
+    sales_url = f"{product_url}/sales-histories"
+    sales_md = fetch_jina_markdown(sales_url)
+    
+    img_match = re.search(r'!\[.*?\]\((https://cdn.snkrdunk.com/.*?)\)', sales_md)
+    img_url = img_match.group(1) if img_match else ""
+    
+    records = []
+    lines = sales_md.split('\n')
+    date_regex = r'^(\d{4}/\d{2}/\d{2}|\d+\s*(分|時間|日)前|\d+\s+(minute|hour|day)s?\s+ago)$'
+    
+    for i in range(len(lines)):
+        line_clean = lines[i].strip()
+        
+        if re.match(date_regex, line_clean, re.IGNORECASE):
+            date_found = line_clean
+            grade_found = ""
+            price_jpy = 0
+            
+            for j in range(i+1, min(i+10, len(lines))):
+                l_j = lines[j].strip()
+                if not l_j:
+                    continue
+                
+                if not grade_found and not re.search(r'^\d', l_j.replace(',', '')):
+                    grade_found = l_j
+                    continue
+                    
+                if grade_found and re.search(r'^\d{1,3}(,\d{3})*$', l_j):
+                    # 移除非數字字元提取價格
+                    digits = re.sub(r'[^\d]', '', l_j)
+                    if digits:
+                        price_jpy = int(digits)
+                    break
+                    
+            if date_found and grade_found and price_jpy:
+                records.append({
+                    "date": date_found,
+                    "price": price_jpy,
+                    "grade": grade_found
+                })
+    
+    return records, img_url
+
+async def generate_report_from_selected(card_info, pc_url, snkr_url, out_dir=None, lang="zh"):
+    """(Manual Mode) Generates the final report from selected URLs, adapted for tcg_pro."""
+    grade = card_info.get("grade", "Ungraded")
+    loop = asyncio.get_running_loop()
+    
+    pc_records, pc_img_url = [], ""
+    if pc_url:
+        res = await loop.run_in_executor(None, contextvars.copy_context().run, _fetch_pc_prices_from_url, pc_url, None, False, grade)
+        pc_records = res[0] if res else []
+        pc_img_url = res[2] if res else ""
+
+    snkr_records, img_url = [], ""
+    if snkr_url:
+        res = await loop.run_in_executor(None, contextvars.copy_context().run, _fetch_snkr_prices_from_url_direct, snkr_url)
+        snkr_records = res[0] if res else []
+        img_url = res[1] if res else ""
+        
+    if not img_url and pc_img_url:
+        img_url = pc_img_url
+        
+    jpy_rate = get_exchange_rate()
+    
+    # Use the existing tcg_pro reporter logic
+    return await finish_report_after_selection(
+        card_info, pc_records, pc_url, pc_img_url, snkr_records, img_url, snkr_url, jpy_rate, out_dir, lang, stream_mode=True
+    )
 
 if __name__ == "__main__":
     import asyncio
