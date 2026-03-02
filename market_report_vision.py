@@ -487,16 +487,18 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
         return _fetch_pc_prices_from_url(search_url, md_content=md_content, target_grade=target_grade)
 
 
-def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art=False, card_language="JP"):
+def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art=False, card_language="JP", snkr_variant_kws=None):
     # Strip prefix like "No." (e.g. "No.025" -> "25"), then apply lstrip('0')
-    _num_raw = number.split('/')[0]
-    _digits_only = re.search(r'\d+', _num_raw)
-    number_clean = _digits_only.group(0).lstrip('0') if _digits_only else _num_raw.lstrip('0')
+    if '-' in number and re.search(r'[A-Z]+\d+-\d+', number):
+        number_clean = number.split('-')[-1].lstrip('0')
+    else:
+        _num_raw = number.split('/')[0]
+        _digits_only = re.search(r'\d+', _num_raw)
+        number_clean = _digits_only.group(0).lstrip('0') if _digits_only else _num_raw.lstrip('0')
+    
     if not number_clean: number_clean = '0'
     number_padded = number_clean.zfill(3)
 
-    terms_to_try = []
-    
     en_name_query = re.sub(r'\(.*?\)', '', en_name).strip()
     jp_name_query = re.sub(r'\(.*?\)', '', jp_name).strip() if jp_name else ""
 
@@ -522,15 +524,21 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
         terms_to_try.append(f"{en_name_query} {number_padded}")
     terms_to_try.append(en_name_query)
     
+    _debug_log(f"SNKRDUNK: 共 {len(terms_to_try)} 種查詢方案: {terms_to_try}")
+
     product_id = None
     snkr_step = 0
-    
+
     for term in terms_to_try:
+        snkr_step += 1
         q = urllib.parse.quote_plus(term)
         search_url = f"https://snkrdunk.com/search?keywords={q}"
+        _debug_log(f"SNKRDUNK Step {snkr_step}: 查詢={term!r}  URL={search_url}")
         md_content = fetch_jina_markdown(search_url)
         
         matches = re.findall(r'\[(.*?)\]\([^\)]*?/apparels/(\d+)[^\)]*?\)', md_content)
+        raw_result_urls = [f"https://snkrdunk.com/apparels/{pid}" for _, pid in matches]
+        _debug_log(f"SNKRDUNK Step {snkr_step}: 頁面原始匹配 {len(matches)} 筆")
         
         seen = set()
         unique_matches = []
@@ -538,8 +546,15 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
             if pid not in seen:
                 seen.add(pid)
                 unique_matches.append((title, pid))
+
+        if not unique_matches:
+            _debug_step("SNKRDUNK", snkr_step, term, search_url,
+                        "NO_RESULTS", reason="搜尋頁面找不到任何商品連結，嘗試下一個查詢")
+            time.sleep(1)
+            continue
                 
         filtered_by_number = []
+        skipped = []
         for title, pid in unique_matches:
             # Drop Jina image prefixes
             title_clean = re.sub(r'(?i)image\s*\d+:\s*', '', title).lower()
@@ -547,46 +562,94 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
             title_clean = re.sub(r'https?://[^\s()\]]+', '', title_clean)
             
             # SNKRDUNK always pads Pokemon/One Piece numbers to at least 3 digits
-            # We strictly enforce the padded number to prevent matching Jina listing indices (e.g. " 4 Pikachu")
             if number_padded in title_clean or f"{number_clean}/" in title_clean:
                 filtered_by_number.append((title, pid))
                 _debug_log(f"  ✅ 符合編號 '{number_padded}': [{pid}] {title}")
             else:
+                skipped.append((title, pid))
                 _debug_log(f"  ❌ 不含編號 '{number_padded}': [{pid}] {title}")
                 
         if not filtered_by_number:
-            _debug_step("SNKRDUNK", snkr_step, term, search_url, "NO_MATCH", reason=f"找不到編號 '{number_padded}'")
+            _debug_step("SNKRDUNK", snkr_step, term, search_url,
+                        "NO_MATCH",
+                        candidate_urls=[f"https://snkrdunk.com/apparels/{pid} — {t}" for t, pid in unique_matches],
+                        reason=f"找到 {len(unique_matches)} 筆商品但均不含卡片編號 '{number_padded}'，嘗試下一個查詢")
             time.sleep(1)
-            continue
+            continue # If no titles specifically have the card number, do not guess
             
         unique_matches = filtered_by_number
-        product_id = unique_matches[0][1] # default
-        selection_reason = "Default (First match)"
-        
-        _debug_step("SNKRDUNK", snkr_step, term, search_url, "OK", reason=f"找到 {len(unique_matches)} 個匹配項")
-        for title, pid in unique_matches:
-            if is_alt_art:
-                lower_t = title.lower()
-                if "コミパラ" in lower_t or "manga" in lower_t or "パラレル" in lower_t \
-                   or "-p" in lower_t or "-sp" in lower_t \
-                   or "sr-p" in lower_t or "l-p" in lower_t:
-                    product_id = pid
-                    selection_reason = "Alt-Art Filter"
-                    break
+                
+        if unique_matches:
+            product_id = unique_matches[0][1] # default to first result
+            selection_reason = "Default (First match)"
+            
+            # ─────────────────────────────────────────────────────────────────
+            # 三階段串聯過濾：Variant → Alt-Art/Normal → Language
+            # 每一階段在上一階段的結果裡繼續篩選，不覆蓋
+            # ─────────────────────────────────────────────────────────────────
+            en_markers = ["英語版", "[en]", "【en】"]
+            
+            # ── Stage 1: Variant-specific filter (features-based, 最高優先) ──
+            # snkr_variant_kws 由 process_single_image 從 features 解析並傳入
+            # 例: ["l-p"] for Leader Parallel, ["sr-p"] for SR Parallel, ["コミパラ"] for Manga, ["フラッグシップ","フラシ"] for Flagship
+            _variant_kws = snkr_variant_kws or []
+            
+            stage1_candidates = [(t, p) for t, p in unique_matches
+                                 if any(kw in t.lower() for kw in _variant_kws)] if _variant_kws else []
+            if stage1_candidates:
+                _debug_log(f"  🎯 Variant Filter ({_variant_kws}) 命中 {len(stage1_candidates)} 筆")
+            working_set = stage1_candidates if stage1_candidates else unique_matches
+            
+            # ── Stage 2: Alt-Art / Normal filter ──────────────────────────
+            alt_art_kws = ["コミパラ", "manga", "パラレル", "-sp", "sr-p", "l-p", "flagship", "フラッグシップ", "フラシ"]
+            if not is_alt_art:
+                stage2 = [(t, p) for t, p in working_set
+                          if not any(kw in t.lower() for kw in alt_art_kws)]
+                if stage2:
+                    selection_reason = "Normal Art Filter (無 Alt-Art 關鍵字)"
             else:
-                lower_t = title.lower()
-                if "コミパラ" not in lower_t and "manga" not in lower_t and "パラレル" not in lower_t \
-                   and "-p" not in lower_t and "-sp" not in lower_t \
-                   and "sr-p" not in lower_t and "l-p" not in lower_t:
-                    product_id = pid
-                    selection_reason = "Normal Art Filter"
-                    break
-        
-        if product_id:
-            _debug_step("SNKRDUNK", snkr_step, term, search_url, "OK", selected_url=f"https://snkrdunk.com/apparels/{product_id}", reason=selection_reason)
+                stage2 = [(t, p) for t, p in working_set
+                          if any(kw in t.lower() for kw in alt_art_kws)]
+                if stage2:
+                    selection_reason = "Alt-Art Filter (偵測到 Alt-Art 關鍵字)"
+                    if stage1_candidates:
+                        selection_reason = f"Variant+Alt-Art Filter ({_variant_kws})"
+            working_set2 = stage2 if stage2 else working_set
+            
+            # ── Stage 3: Language filter ───────────────────────────────────
+            if card_language == "EN":
+                stage3 = [(t, p) for t, p in working_set2
+                          if any(m in t.lower() for m in en_markers)]
+                if stage3:
+                    product_id = stage3[0][1]
+                    selection_reason += " + Language(EN)"
+                    _debug_log(f"  🌐 語言過濾選中英文版: [{product_id}]")
+                else:
+                    product_id = working_set2[0][1]
+            else:  # JP (default)
+                stage3 = [(t, p) for t, p in working_set2
+                          if not any(m in t.lower() for m in en_markers)]
+                if stage3:
+                    product_id = stage3[0][1]
+                    selection_reason += " + Language(JP)"
+                    _debug_log(f"  🌐 語言過濾選中日文版: [{product_id}]")
+                else:
+                    product_id = working_set2[0][1]
+                    _debug_log(f"  🌐 語言過濾: 未找到日文版，使用 working_set2 首筆")
+
+            _debug_step("SNKRDUNK", snkr_step, term, search_url,
+            "OK",
+            candidate_urls=[f"https://snkrdunk.com/apparels/{pid} — {t}" for t, pid in unique_matches],
+            selected_url=f"https://snkrdunk.com/apparels/{product_id}",
+            reason=selection_reason,
+            extra={"number_padded": number_padded, "is_alt_art": is_alt_art})
             break
         
         time.sleep(1)
+        
+    if not product_id:
+        return None, None, None
+        
     print(f"Found SNKRDUNK Product ID: {product_id}")
     
     sales_url = f"https://snkrdunk.com/apparels/{product_id}/sales-histories"
@@ -622,10 +685,12 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
                     
             if grade_found and price_jpy > 0:
                 # 不過濾等級，直接收集所有成交紀錄（含實際等級）
+                # generate_report 的顯示邏輯會按需選取正確等級
+                # 航海王 BGS 卡需要同時看到 A/PSA10/BGS 等紀錄
                 records.append({
                     "date": date_found,
                     "price": price_jpy,
-                    "grade": grade_found
+                    "grade": grade_found  # 保留頁面上的實際等級字串
                 })
                 
     resolved_url = f"https://snkrdunk.com/apparels/{product_id}" if product_id else None
@@ -957,6 +1022,36 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     print(f"🌐 正在從網路(PC & SNKRDUNK)抓取市場行情 (異圖/特殊版: {is_alt_art})...")
     loop = asyncio.get_running_loop()
     # Using independent copy_context().run calls to avoid "context already entered" RuntimeError
+    # ── Detect card language from features (航海王語言判定) ──
+    is_one_piece_cat = (category.lower() == "one piece" or "航海王" in category)
+    card_language = "JP"  # Default for One Piece: Japanese
+    if is_one_piece_cat:
+        if any(kw in features_lower for kw in ["英文版", "english version", "[en]"]):
+            card_language = "EN"
+            _debug_log(f"🌐 Language detected: EN (從 features 偵測到英文版)")
+        else:
+            _debug_log(f"🌐 Language detected: JP (預設日文版)")
+            
+    # ── Detect specific card variant for SNKRDUNK precision filter ──
+    snkr_variant_kws = []
+    if is_one_piece_cat and is_alt_art:
+        if is_flagship:
+            snkr_variant_kws = ["フラッグシップ", "フラシ", "flagship"]
+            _debug_log(f"🎯 SNKR Variant: Flagship ({snkr_variant_kws})")
+        elif any(kw in features_lower for kw in ["sr parallel", "sr-p", "スーパーレアパラレル"]):
+            snkr_variant_kws = ["sr-p"]
+            _debug_log(f"🎯 SNKR Variant: SR-P ({snkr_variant_kws})")
+        elif any(kw in features_lower for kw in ["leader parallel", "l-p", "リーダーパラレル"]):
+            snkr_variant_kws = ["l-p"]
+            _debug_log(f"🎯 SNKR Variant: L-P ({snkr_variant_kws})")
+        elif any(kw in features_lower for kw in ["コミパラ", "manga", "コミックパラレル"]):
+            snkr_variant_kws = ["コミパラ", "コミック"]
+            _debug_log(f"🎯 SNKR Variant: Manga ({snkr_variant_kws})")
+        elif any(kw in features_lower for kw in ["パラレル", "sr parallel", "parallel art"]):
+            snkr_variant_kws = ["パラレル", "-p"]
+            _debug_log(f"🎯 SNKR Variant: General Parallel ({snkr_variant_kws})")
+    # ─────────────────────────────────────────────────────────────
+
     pc_result, snkr_result = await asyncio.gather(
         loop.run_in_executor(None, contextvars.copy_context().run, search_pricecharting, name, number, set_code, grade, is_alt_art, category, is_flagship),
         loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art, card_language, snkr_variant_kws),
