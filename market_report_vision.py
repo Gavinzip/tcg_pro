@@ -1217,13 +1217,14 @@ async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_ur
     async def count_30_days(records_list, tgt_grade):
         cutoff = datetime.now() - timedelta(days=30)
         return len([r for r in (records_list or []) if r.get('grade') == tgt_grade and (await _parse_d(r['date'])) > cutoff])
+    cutoff_12m = datetime.now() - timedelta(days=365)
+    
     if pc_records:
         if report_pc_records:
             for r in report_pc_records[:10]:
                 state_label = "Grade" if lang == "en" else "狀態"
                 report_lines.append(f"📅 {r['date']}      💰 ${r['price']:.2f} USD      📝 {state_label}：{r['grade']}")
             
-            cutoff_12m = datetime.now() - timedelta(days=365)
             # Filter for statistics: only last 12 months
             stats_pc_records = []
             for r in report_pc_records:
