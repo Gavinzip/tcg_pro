@@ -251,8 +251,8 @@ async def on_ready():
 class PCSelect(discord.ui.Select):
     def __init__(self, candidates):
         options = []
-        for c in candidates[:25]:
-            label = c.split('/')[-1][:100]
+        for i, c in enumerate(candidates[:25], start=1):
+            label = f"#{i} — {c.split('/')[-1][:95]}"
             options.append(discord.SelectOption(label=label, value=c[:100], description=c[:100]))
         super().__init__(placeholder="請選擇 PriceCharting 的正確版本...", min_values=1, max_values=1, options=options)
 
@@ -267,8 +267,9 @@ class PCSelect(discord.ui.Select):
 class SnkrSelect(discord.ui.Select):
     def __init__(self, candidates):
         options = []
-        for c in candidates[:25]:
-            label = c.split('/')[-1] if not " — " in c else c.split(" — ")[1][:100]
+        for i, c in enumerate(candidates[:25], start=1):
+            label_text = c.split('/')[-1] if not " — " in c else c.split(" — ")[1][:95]
+            label = f"#{i} — {label_text}"
             val = c.split(" — ")[0][:100]
             options.append(discord.SelectOption(label=label, value=val))
         super().__init__(placeholder="請選擇 SNKRDUNK 的正確版本...", min_values=1, max_values=1, options=options)
@@ -329,7 +330,7 @@ class ManualCandidateView(discord.ui.View):
                             await thread.send(file=discord.File(path))
         except Exception as e:
             error_trace = traceback.format_exc()
-            await channel.send(f"❌ 執行異常：\n```python\n{error_trace[-1900:]}\n```")
+            await thread.send(f"❌ 執行異常：\n```python\n{error_trace[-1900:]}\n```")
         finally:
             shutil.rmtree(card_out_dir, ignore_errors=True)
 

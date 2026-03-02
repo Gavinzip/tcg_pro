@@ -1321,6 +1321,20 @@ async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_ur
             f.write(final_report)
         print(f"✅ 報告已儲存至: {filepath}")
         
+    if stream_mode:
+        # Inject the snkrdunk image URL into the card info dictionary for Pillow to fetch
+        card_info['img_url'] = img_url
+        final_dest_dir = dest_dir if out_dir else '.'
+        
+        # ℹ️ Stream Mode：不在這裡等待海報生成，回傳文字報告 + 海報生成所需的資料
+        poster_data = {
+            "card_info": card_info,
+            "snkr_records": snkr_records if snkr_records else [],
+            "pc_records": pc_records if pc_records else [],
+            "out_dir": final_dest_dir,
+        }
+        return (final_report, poster_data)
+        
     if REPORT_ONLY:
         # Inject the snkrdunk image URL into the card info dictionary for Pillow to fetch
         card_info['img_url'] = img_url
@@ -1343,19 +1357,8 @@ async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_ur
             json.dump(data_dump, f, ensure_ascii=False, indent=2)
             
         # Generate the two separate HTML-based posters (Now with FULL history)
-        if stream_mode:
-            # ℹ️ Stream Mode：不在這裡等待海報生成，回傳文字報告 + 海報生成所需的資料
-            # Bot 收到後會先傳送文字報告，再呼叫 generate_posters() 生成海報
-            poster_data = {
-                "card_info": card_info,
-                "snkr_records": snkr_records,
-                "pc_records": pc_records,
-                "out_dir": final_dest_dir,
-            }
-            return (final_report, poster_data)
-        else:
-            out_paths = await image_generator.generate_report(card_info, snkr_records, pc_records, out_dir=final_dest_dir)
-            return (final_report, out_paths)
+        out_paths = await image_generator.generate_report(card_info, snkr_records, pc_records, out_dir=final_dest_dir)
+        return (final_report, out_paths)
         
     # Debug step3: 儲存最終報告
     _debug_log("Step 3: 報告生成完成")
