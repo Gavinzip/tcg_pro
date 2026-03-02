@@ -172,7 +172,7 @@ def extract_price(price_str):
     except:
         return 0.0
 
-def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False, target_grade="Ungraded"):
+def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False, target_grade="PSA 10"):
     """
     Given a PriceCharting product URL, fetch (if md_content is None) and parse it.
     Returns (records, resolved_url, pc_img_url).
@@ -217,29 +217,16 @@ def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False, t
                     detected_grade = "Ungraded"
                         
                 if detected_grade:
-                    # Filter by target_grade
-                    grade_clean = target_grade.replace(" ", "").lower()
-                    title_clean = line.replace(" ", "").lower()
-                    
-                    grade_matched = False
-                    if grade_clean == "ungraded":
-                        if not re.search(r'(psa|bgs|cgc|grade|gem)', title_clean):
-                            grade_matched = True
-                    else:
-                        if grade_clean in title_clean:
-                            grade_matched = True
-
-                    if grade_matched:
-                        records.append({
-                            "date": date_str,
-                            "price": price_usd,
-                            "grade": detected_grade
-                        })
+                    records.append({
+                        "date": date_str,
+                        "price": price_usd,
+                        "grade": detected_grade
+                    })
 
     # Parser 2: 嘗試 Jina 新版的 TSV 格式 (日期獨立一行，標題與價格在下一行)
     if not records:
         current_date = None
-        date_regex_tsv = r'^(\d{4}-\d{2}-\d{2}|[A-Z][a-z]{2}\s\d{1,2},\s\d{4})'
+        date_regex_tsv = r'^(\d{4}-\d{2}-\d.2}|[A-Z][a-z]{2}\s\d{1,2},\s\d{4})'
         for line in lines:
             line = line.strip()
             date_match = re.match(date_regex_tsv, line)
@@ -256,35 +243,22 @@ def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False, t
                 detected_grade = None
                 if re.search(r'(psa|cgc|bgs|grade|gem)10', title_clean) or ("psa" in title_clean and "10" in title_clean):
                     detected_grade = "PSA 10"
+                elif re.search(r'bgs\s*9\.5', title_clean):
+                    detected_grade = "BGS 9.5"
                 elif re.search(r'(psa|cgc|bgs|grade|gem)9', title_clean) or ("psa" in title_clean and "9" in title_clean):
                     detected_grade = "PSA 9"
-                elif re.search(r'(psa|cgc|bgs|grade|gem)8', title_clean) or ("psa" in title_clean and "8" in title_clean):
-                    detected_grade = "PSA 8"
                 elif not re.search(r'(psa|bgs|cgc|grade|gem)', title_clean):
                     detected_grade = "Ungraded"
                 if detected_grade:
-                    # Filter by target_grade
-                    grade_clean = target_grade.replace(" ", "").lower()
-                    title_clean = line.replace(" ", "").lower()
-                    
-                    grade_matched = False
-                    if grade_clean == "ungraded":
-                        if not re.search(r'(psa|bgs|cgc|grade|gem)', title_clean):
-                            grade_matched = True
-                    else:
-                        if grade_clean in title_clean:
-                            grade_matched = True
+                    records.append({
+                        "date": current_date,
+                        "price": price_usd,
+                        "grade": detected_grade
+                    })
 
-                    if grade_matched:
-                        records.append({
-                            "date": current_date,
-                            "price": price_usd,
-                            "grade": detected_grade
-                        })
-
-    # Summary prices
+    # Summary: if no per-item records, try summary table
     today_str = datetime.now().strftime('%Y-%m-%d')
-    grade_summary_map = {'Ungraded': 'Ungraded', 'PSA 10': 'PSA 10', 'PSA 9': 'PSA 9', 'PSA 8': 'PSA 8'}
+    grade_summary_map = {'Ungraded': 'Ungraded', 'PSA 10': 'PSA 10', 'PSA 9': 'PSA 9', 'BGS 9.5': 'BGS 9.5'}
     existing_grades = set(r['grade'] for r in records)
     for line in lines:
         for grade_label, grade_key in grade_summary_map.items():
@@ -295,11 +269,10 @@ def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False, t
                     if price_match:
                         price_usd = extract_price(price_match.group(0))
                         records.append({"date": today_str, "price": price_usd, "grade": grade_key, "note": "PC avg price"})
-    
+
     records.sort(key=lambda x: x['date'], reverse=True)
     
     pc_img_url = None
-    # 擴展 regex 以匹配更多可能的圖片路徑格式
     img_patterns = [
         r'!\[.*?\]\((https://storage\.googleapis\.com/images\.pricecharting\.com/[^/)]+/\d+\.jpg)\)',
         r'!\[.*?\]\((https://product-images\.s3\.amazonaws\.com/[^\)]+)\)',
@@ -311,28 +284,30 @@ def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False, t
         m = re.search(pat, md_content)
         if m:
             pc_img_url = m.group(1)
-            print(f"DEBUG: Found image URL: {pc_img_url}")
             if not skip_hi_res:
                 hiRes_url = re.sub(r'/([\d]+)\.jpg$', '/1600.jpg', pc_img_url)
                 if hiRes_url != pc_img_url:
                     try:
                         if requests.head(hiRes_url, timeout=5).status_code == 200:
                             pc_img_url = hiRes_url
-                            print(f"DEBUG: Upgraded to 1600px: {pc_img_url}")
                     except: pass
             break
-            
-    if not pc_img_url:
-        print(f"DEBUG: No image found in markdown for {product_url}")
 
     return records, product_url, pc_img_url
+
+def extract_price(price_str):
+    cleaned = re.sub(r'[^\d.]', '', price_str)
+    try:
+        return float(cleaned)
+    except:
+        return 0.0
 
 def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False, category="Pokemon", is_flagship=False):
     # Basic Name cleaning (strip parentheses like "Queen (Flagship Battle Top 8 Prize)")
     name_query = re.sub(r'\(.*?\)', '', name).strip()
-
-    # Improve number extraction for One Piece (ST04-005 -> 005, OP02-026 -> 026)
-    # If the number contains a dash and follows OP/ST format, take the part after the dash
+    
+    # Improve number extraction for One Piece (ST04-005 -> 005)
+    # If the number contains a dash and follows OP format, take the part after the dash
     if '-' in number and re.search(r'[A-Z]+\d+-\d+', number):
         number_clean = number.split('-')[-1].lstrip('0')
     else:
@@ -340,9 +315,9 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
         _num_raw = _num_parts[0].strip()
         _digits_only = re.search(r'\d+', _num_raw)
         number_clean = _digits_only.group(0).lstrip('0') if _digits_only else _num_raw.lstrip('0')
-
+    
     if not number_clean: number_clean = '0'
-
+    
     # Try to extract suffix like SM-P from the number itself if it's there
     suffix = ""
     _num_parts = number.split('/')
@@ -350,40 +325,53 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
         potential_suffix = _num_parts[1].strip()
         if re.search(r'(SM-P|S-P|SV-P|SV-G|S8a-G)', potential_suffix, re.IGNORECASE):
             suffix = potential_suffix
-
+    
     # Try with set code or suffix first
     queries_to_try = []
     final_set_code = set_code if set_code else suffix
-
+    
     if final_set_code:
         queries_to_try.append(f"{name_query} {final_set_code} {number_clean}".replace(" ", "+"))
-
+    
     queries_to_try.append(f"{name_query} {number_clean}".replace(" ", "+"))
 
     is_one_piece = category.lower() == "one piece"
+    _debug_log(f"PriceCharting: 類別={category} ({'航海王模式' if is_one_piece else '寶可夢模式'})，共 {len(queries_to_try)} 種查詢方案: {queries_to_try}")
 
     md_content = ""
     search_url = ""
+    pc_step = 0
 
     for query in queries_to_try:
+        pc_step += 1
         search_url = f"https://www.pricecharting.com/search-products?q={query}&type=prices"
+        _debug_log(f"PriceCharting Step {pc_step}: 查詢={query!r}  URL={search_url}")
         md_content = fetch_jina_markdown(search_url)
         if md_content and ("Search Results" in md_content or "Your search for" in md_content):
+            _debug_step("PriceCharting", pc_step, query, search_url,
+                        "OK", reason="搜尋頁面有多筆結果，繼續解析")
             break
         elif md_content and "PriceCharting" in md_content:
-            # might have landed on product directly
+            _debug_step("PriceCharting", pc_step, query, search_url,
+                        "OK", reason="直接落在商品頁面")
             break
-
+        else:
+            _debug_step("PriceCharting", pc_step, query, search_url,
+                        "NO_RESULTS", reason="頁面為空或無法識別，嘗試下一個查詢")
+            
     if not md_content:
-        return None, None
-
-    product_url = None
-
+        _debug_step("PriceCharting", pc_step, "", "",
+                    "ERROR", reason="所有查詢均無回應，放棄")
+        return None, None, None
+    
+    product_url = ""
     if "Your search for" in md_content or "Search Results" in md_content:
         urls = re.findall(r'(https://www\.pricecharting\.com/game/[^/]+/[^" )\]]+)', md_content)
         # Deduplicate while preserving order
         urls = list(dict.fromkeys(urls))
-
+        
+        _debug_log(f"PriceCharting: 從搜尋頁面提取到 {len(urls)} 個候選 URL")
+        
         valid_urls = []
         # 「名稱 slug」用純角色名（去掉括號內的版本描述，如 Leader Parallel / SP Foil 等）
         name_for_slug = re.sub(r'\(.*?\)', '', name).strip()
@@ -417,38 +405,47 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
 
                 if has_name and has_num and has_set:
                     matching_both.append(u)
+                    _debug_log(f"  ✅ [OP] 名稱+編號+setcode: {u}")
                 elif has_name and has_set:
                     matching_name.append(u)
+                    _debug_log(f"  🔶 [OP] 名稱+setcode (無編號): {u}")
                 elif has_num and has_set:
                     matching_number.append(u)
+                    _debug_log(f"  🔷 [OP] 編號+setcode (無名稱): {u}")
                 elif has_name and has_num:
-                    # set_code 沒中但名稱+編號都有 → 列為備選
-                    matching_number.append(u)
+                    matching_both.append(u)
+                    _debug_log(f"  🟡 [OP] 名稱+編號 (setcode未命中): {u}")
+                else:
+                    _debug_log(f"  ❌ [OP] URL 不符合: {u}")
             else:
-                # ── 寶可夢模式：原本的 3 層邏輯不變 ──
                 if name_slug and name_slug in u_end and _num_match(u_end):
                     matching_both.append(u)
+                    _debug_log(f"  ✅ [PKM] 名稱+編號: {u}")
                 elif name_slug and name_slug in u_end:
                     matching_name.append(u)
+                    _debug_log(f"  🔶 [PKM] 只符合名稱: {u}")
                 elif _num_match(u_end):
                     matching_number.append(u)
+                    _debug_log(f"  🔷 [PKM] 只符合編號 '{number_clean}'/'{number_padded_pc}': {u}")
+                else:
+                    _debug_log(f"  ❌ [PKM] URL 不符合: {u}")
 
         # 合併：最高優先為同時符合的，依序遞減
         valid_urls = matching_both + matching_name + matching_number
-
+                
         if not valid_urls:
-            _debug_step("PriceCharting", 1, name_slug, search_url, "NO_MATCH", reason=f"沒有符合卡片名稱或編號的 URL")
+            _debug_step("PriceCharting", pc_step + 1,
+                        f"name_slug={name_slug!r}, number={number_clean!r}",
+                        search_url, "NO_MATCH",
+                        candidate_urls=urls,
+                        reason=f"所有 {len(urls)} 個候選 URL 均不符合卡片名稱或編號，放棄")
             print(f"DEBUG: No PC product URL matched the card name '{name}' or number '{number_clean}'.")
-            return None, None, None, []
-
-        # ── 航海王版本選擇邏輯 ──
-        # 自動過濾邏輯已足夠精準，不再需要手動選擇。
-        # (原本在此處會偵測 Ambiguous 並返回待選清單)
-
+            return None, None, None
+            
         # Prioritize the first valid match
         product_url = valid_urls[0]
         selection_reason = "Default (First match)"
-
+        
         # Filter based on is_alt_art / is_flagship (features-based override 主導)
         if is_flagship:
             # 旗艦賽獎品卡：尋找包含 flagship 的 URL
@@ -462,8 +459,7 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
             for u in valid_urls:
                 lower_u = u.replace('[', '').replace(']', '').lower()
                 # 航海王普通版不應包含以下關鍵字
-                if "manga" not in lower_u and "alternate-art" not in lower_u and \
-                   "-sp" not in lower_u and "flagship" not in lower_u:
+                if "manga" not in lower_u and "alternate-art" not in lower_u and "-sp" not in lower_u and "flagship" not in lower_u:
                     product_url = u
                     selection_reason = "Normal Art Filter (無 manga/alternate-art/flagship 關鍵字)"
                     break
@@ -476,16 +472,25 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
                     selection_reason = "Alt-Art Filter (偵測到 Manga/Alternate-Art/SP 關鍵字)"
                     break
         
-        _debug_step("PriceCharting", 1, name_slug, search_url, "OK", selected_url=product_url, reason=selection_reason, candidate_urls=valid_urls)
-    
-    # Final verification: Some completely unrelated cards get snagged if their ID happens to contain "226" inside it.
-    if product_url:
+        _debug_step("PriceCharting", pc_step + 1,
+                    f"is_alt_art={is_alt_art}, name_slug={name_slug!r}, number={number_clean!r}",
+                    search_url, "OK",
+                    candidate_urls=urls,
+                    selected_url=product_url,
+                    reason=selection_reason,
+                    extra={"matching_both": matching_both,
+                           "matching_name": matching_name,
+                           "matching_number": matching_number})
         print(f"DEBUG: Selected PC product URL: {product_url} ({selection_reason})")
-        return _fetch_pc_prices_from_url(product_url, target_grade=target_grade)
+        records, resolved_url, pc_img_url = _fetch_pc_prices_from_url(product_url, target_grade=target_grade)
     else:
         print(f"DEBUG: Landed directly on PC product page")
-        return _fetch_pc_prices_from_url(search_url, md_content=md_content, target_grade=target_grade)
-
+        product_url = search_url
+        _debug_step("PriceCharting", pc_step + 1, "", product_url,
+                    "OK", reason="直接落在商品頁面，跳過 URL 篩選")
+        records, resolved_url, pc_img_url = _fetch_pc_prices_from_url(product_url, md_content=md_content, target_grade=target_grade)
+    
+    return records, resolved_url, pc_img_url
 
 def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art=False, card_language="JP", snkr_variant_kws=None):
     # Strip prefix like "No." (e.g. "No.025" -> "25"), then apply lstrip('0')
@@ -518,11 +523,6 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
     if jp_name_query:
         if number_padded != "000":
             terms_to_try.append(f"{jp_name_query} {number_padded}")
-        terms_to_try.append(jp_name_query)
-
-    if number_padded != "000":
-        terms_to_try.append(f"{en_name_query} {number_padded}")
-    terms_to_try.append(en_name_query)
     
     _debug_log(f"SNKRDUNK: 共 {len(terms_to_try)} 種查詢方案: {terms_to_try}")
 
@@ -1023,7 +1023,7 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     loop = asyncio.get_running_loop()
     # Using independent copy_context().run calls to avoid "context already entered" RuntimeError
     # ── Detect card language from features (航海王語言判定) ──
-    is_one_piece_cat = (category.lower() == "one piece" or "航海王" in category)
+    is_one_piece_cat = (category.lower() == "one piece")
     card_language = "JP"  # Default for One Piece: Japanese
     if is_one_piece_cat:
         if any(kw in features_lower for kw in ["英文版", "english version", "[en]"]):
@@ -1031,8 +1031,8 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
             _debug_log(f"🌐 Language detected: EN (從 features 偵測到英文版)")
         else:
             _debug_log(f"🌐 Language detected: JP (預設日文版)")
-            
     # ── Detect specific card variant for SNKRDUNK precision filter ──
+    # 優先順序：Flagship > SR-P > L-P > Manga/コミパラ > 通用 Alt-Art
     snkr_variant_kws = []
     if is_one_piece_cat and is_alt_art:
         if is_flagship:
@@ -1051,7 +1051,17 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
             snkr_variant_kws = ["パラレル", "-p"]
             _debug_log(f"🎯 SNKR Variant: General Parallel ({snkr_variant_kws})")
     # ─────────────────────────────────────────────────────────────
-
+    # ⚠️ 並發關鍵：search_pricecharting 和 search_snkrdunk 都是同步阻塞函數，
+    # 用 run_in_executor 把它們丟到 thread pool，再用 asyncio.gather 同時等待兩者完成。
+    # 等待期間 event loop 不被 block，其他用戶的 Task 可以開始跑 Minimax 分析。
+    #
+    # Rate Limiter 安全說明：
+    # fetch_jina_markdown 內的 _jina_lock (threading.Lock) + _jina_requests_queue 是
+    # module-level 全域變數，所有 thread 共用同一份，thread-safe 排隊機制依然完整生效。
+    print("--------------------------------------------------")
+    print(f"🌐 正在從網路(PC & SNKRDUNK)抓取市場行情 (異圖/特殊版: {is_alt_art})...")
+    loop = asyncio.get_running_loop()
+    # Using independent copy_context().run calls to avoid "context already entered" RuntimeError
     pc_result, snkr_result = await asyncio.gather(
         loop.run_in_executor(None, contextvars.copy_context().run, search_pricecharting, name, number, set_code, grade, is_alt_art, category, is_flagship),
         loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art, card_language, snkr_variant_kws),
