@@ -621,13 +621,12 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
                     break
                     
             if grade_found and price_jpy > 0:
-                snkr_target_grade = "A" if target_grade.lower() == "ungraded" else target_grade
-                if snkr_target_grade.replace(" ", "").lower() == grade_found.replace(" ", "").lower():
-                    records.append({
-                        "date": date_found,
-                        "price": price_jpy,
-                        "grade": snkr_target_grade
-                    })
+                # 不過濾等級，直接收集所有成交紀錄（含實際等級）
+                records.append({
+                    "date": date_found,
+                    "price": price_jpy,
+                    "grade": grade_found
+                })
                 
     resolved_url = f"https://snkrdunk.com/apparels/{product_id}" if product_id else None
                 
