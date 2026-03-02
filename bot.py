@@ -304,23 +304,7 @@ class ManualCandidateView(discord.ui.View):
         asyncio.create_task(self.generate_report(interaction))
         
     async def generate_report(self, interaction: discord.Interaction):
-        channel = interaction.channel
-        user = interaction.user
-        
-        # 1. Create a thread for the manual analysis results
-        thread_name = "手動分析結果" if self.lang == "zh" else "Manual Analysis Results"
-        try:
-            # Create thread from the interaction message (or the channel if it's a guild)
-            if isinstance(channel, (discord.TextChannel, discord.ForumChannel)):
-                thread = await interaction.followup.send(f"✅ 版本已選擇，正在建立專屬討論串...")
-                thread = await thread.create_thread(name=thread_name, auto_archive_duration=60)
-                await thread.add_user(user)
-            else:
-                thread = channel
-        except Exception as e:
-            print(f"⚠️ Thread creation failed: {e}")
-            thread = channel
-
+        thread = interaction.channel # In this version, we start in the thread
         card_out_dir = tempfile.mkdtemp(prefix=f"tcg_manual_{id(self)}_")
         try:
             # 2. Generate text report and poster_data
@@ -355,17 +339,22 @@ async def manual_analyze(interaction: discord.Interaction, image: discord.Attach
         await interaction.response.send_message("❌ 請上傳有效的圖片", ephemeral=True)
         return
         
-    await interaction.response.send_message(f"🔍 收到圖片，正在分析中 (語言: {lang})，請稍候...", ephemeral=False)
+    await interaction.response.send_message(f"🔍 收到圖片，正在建立分析討論串...", ephemeral=False)
+    resp = await interaction.original_response()
+    thread_name = "卡片分析 (手動模式)" if lang == "zh" else "Card Analysis (Manual)"
+    thread = await resp.create_thread(name=thread_name, auto_archive_duration=60)
+    await thread.add_user(interaction.user)
     
     temp_dir = tempfile.gettempdir()
     img_path = os.path.join(temp_dir, f"manual_{image.id}_{image.filename}")
     await image.save(img_path)
     
     try:
+        await thread.send(f"⏳ 正在辨識卡片影像中 (語言: {lang})...")
         api_key = os.getenv("MINIMAX_API_KEY")
         res = await market_report_vision.process_image_for_candidates(img_path, api_key)
         if not res or len(res) < 2:
-            await interaction.followup.send(f"❌ 分析失敗: {res[1] if res else '未知錯誤'}")
+            await thread.send(f"❌ 分析失敗: {res[1] if res else '未知錯誤'}")
             return
             
         card_info, candidates = res
@@ -373,21 +362,51 @@ async def manual_analyze(interaction: discord.Interaction, image: discord.Attach
         snkr_candidates = candidates.get("snkr", [])
         
         if not pc_candidates and not snkr_candidates:
-            await interaction.followup.send("❌ 找不到任何符合的卡片候補。")
+            await thread.send("❌ 找不到任何符合的卡片候補。")
             return
+            
+        # --- 抓取預覽圖 ---
+        await thread.send("🖼️ 正在抓取候選版本預覽圖，請稍候...")
+        loop = asyncio.get_running_loop()
+        embeds = []
+        
+        # 1. PC 預覽 (Top 5)
+        for i, url in enumerate(pc_candidates[:5], start=1):
+            try:
+                _re, _url, thumb_url = await loop.run_in_executor(None, lambda: market_report_vision._fetch_pc_prices_from_url(url, skip_hi_res=True))
+                slug = url.split('/')[-1]
+                embed = discord.Embed(title=f"PriceCharting 候選 #{i}", description=f"Slug: `{slug}`", url=url, color=0x3498db)
+                if thumb_url: embed.set_thumbnail(url=thumb_url)
+                embeds.append(embed)
+            except: pass
+            
+        # 2. SNKRDUNK 預覽 (Top 5)
+        for i, cand in enumerate(snkr_candidates[:5], start=1):
+            try:
+                url = cand.split(" — ")[0]
+                title = cand.split(" — ")[1] if " — " in cand else "SNKRDUNK Item"
+                _re, thumb_url = await loop.run_in_executor(None, market_report_vision._fetch_snkr_prices_from_url_direct, url)
+                embed = discord.Embed(title=f"SNKRDUNK 候選 #{i}", description=title, url=url, color=0xe67e22)
+                if thumb_url: embed.set_thumbnail(url=thumb_url)
+                embeds.append(embed)
+            except: pass
+
+        # 分批發送 Embeds
+        for i in range(0, len(embeds), 5):
+            await thread.send(embeds=embeds[i:i+5])
             
         view = ManualCandidateView(card_info, pc_candidates, snkr_candidates, lang=lang)
         info_text = f"**手動模式：候選卡片選擇**\n"
         info_text += f"> **名稱:** {card_info.get('name', '')} ({card_info.get('jp_name', '')})\n"
         info_text += f"> **編號:** {card_info.get('number', '')}\n"
-        info_text += "請選擇正確版本後按下確認："
+        info_text += "請根據上方圖片，選擇正確版本後按下確認："
         
-        view_msg = await interaction.followup.send(content=info_text, view=view, wait=True)
+        view_msg = await thread.send(content=info_text, view=view)
         view.original_message = view_msg
         
     except Exception as e:
         error_trace = traceback.format_exc()
-        await interaction.followup.send(f"❌ 發生異常：\n```python\n{error_trace[-1900:]}\n```")
+        await thread.send(f"❌ 發生異常：\n```python\n{error_trace[-1900:]}\n```")
     finally:
         if os.path.exists(img_path):
             os.remove(img_path)
