@@ -240,10 +240,13 @@ async def handle_image(attachment, message, lang="zh"):
 
 @client.event
 async def on_ready():
-    # Sync global commands to remove stale ones and apply new ones
-    await tree.sync()
-    print(f'✅ 機器人已成功登入為 {client.user}')
-    print(f"✅ Slash Commands 已同步完成")
+    # Attempt to sync global commands
+    try:
+        await tree.sync()
+        print(f'✅ 機器人已成功登入為 {client.user}')
+        print(f"✅ 全域 Slash Commands 同步嘗試完成 (全球更新可能需 1 小時)")
+    except Exception as e:
+        print(f"⚠️ 全域同步失敗: {e}")
 
 class PCSelect(discord.ui.Select):
     def __init__(self, candidates):
@@ -298,12 +301,29 @@ class ManualCandidateView(discord.ui.View):
             child.disabled = True
         if self.original_message:
             await self.original_message.edit(view=self)
-        asyncio.create_task(self.generate_report(interaction.channel))
+        asyncio.create_task(self.generate_report(interaction))
         
-    async def generate_report(self, channel):
+    async def generate_report(self, interaction: discord.Interaction):
+        channel = interaction.channel
+        user = interaction.user
+        
+        # 1. Create a thread for the manual analysis results
+        thread_name = "手動分析結果" if self.lang == "zh" else "Manual Analysis Results"
+        try:
+            # Create thread from the interaction message (or the channel if it's a guild)
+            if isinstance(channel, (discord.TextChannel, discord.ForumChannel)):
+                thread = await interaction.followup.send(f"✅ 版本已選擇，正在建立專屬討論串...")
+                thread = await thread.create_thread(name=thread_name, auto_archive_duration=60)
+                await thread.add_user(user)
+            else:
+                thread = channel
+        except Exception as e:
+            print(f"⚠️ Thread creation failed: {e}")
+            thread = channel
+
         card_out_dir = tempfile.mkdtemp(prefix=f"tcg_manual_{id(self)}_")
         try:
-            # 1. Generate text report and poster_data
+            # 2. Generate text report and poster_data
             result = await market_report_vision.generate_report_from_selected(
                 self.card_info, self.selected_pc, self.selected_snkr, out_dir=card_out_dir, lang=self.lang
             )
@@ -312,17 +332,17 @@ class ManualCandidateView(discord.ui.View):
             
             if report_text:
                 for chunk in smart_split(report_text):
-                    await channel.send(chunk)
+                    await thread.send(chunk)
             
-            # 2. Generate and send posters
+            # 3. Generate and send posters
             if poster_data:
                 wait_msg = "🖼️ Generating poster..." if self.lang == "en" else "🖼️ 海報生成中..."
-                await channel.send(wait_msg)
+                await thread.send(wait_msg)
                 out_paths = await market_report_vision.generate_posters(poster_data)
                 if out_paths:
                     for path in out_paths:
                         if os.path.exists(path):
-                            await channel.send(file=discord.File(path))
+                            await thread.send(file=discord.File(path))
         except Exception as e:
             error_trace = traceback.format_exc()
             await channel.send(f"❌ 執行異常：\n```python\n{error_trace[-1900:]}\n```")
@@ -372,32 +392,51 @@ async def manual_analyze(interaction: discord.Interaction, image: discord.Attach
         if os.path.exists(img_path):
             os.remove(img_path)
 
-@tree.command(name="clear_stale_commands", description="[Owner] 清除所有全域斜線指令並重置 (解決冗餘指令問題)")
+@tree.command(name="clear_stale_commands", description="[Owner] 清除所有全域斜線指令並重置 (建議改用 !sync)")
 async def clear_stale(interaction: discord.Interaction):
     await interaction.response.send_message("⚙️ 正在清除全域指令並重新同步，請稍候...", ephemeral=True)
-    tree.clear_commands(guild=None)
+    # Note: Global sync can be slow. 
     await tree.sync()
-    # Re-add current commands and sync again to be sure
-    # In a real scenario, you'd just restart, but for now we sync the empty tree then the user can restart.
-    await interaction.followup.send("✅ 已清除全域指令。請重新啟動機器人以載入正確指令。", ephemeral=True)
+    await interaction.followup.send("✅ 已發送同步請求。若指令未更新，請嘗試使用文字指令 `!sync` (需標註機器人)。", ephemeral=True)
 
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
 
-    if client.user in message.mentions and message.attachments:
-        # 偵測語言指令
-        content_lower = message.content.lower()
-        if "!en" in content_lower or " en" in content_lower or content_lower.endswith("en"):
-            lang = "en"
-        else:
-            lang = "zh"
+    if client.user in message.mentions:
+        content_lower = message.content.lower().strip()
+        
+        # --- 強制同步指令 (文字備援方案) ---
+        if "!sync" in content_lower:
+            try:
+                # 1. 先同步到當前伺服器 (Guild Sync - 幾乎即時生效)
+                print(f"⚙️ 正在同步指令到伺服器: {message.guild.id}")
+                tree.copy_global_to(guild=message.guild)
+                await tree.sync(guild=message.guild)
+                
+                # 2. 同步到全域 (Global Sync - 需 1 小時)
+                await tree.sync()
+                
+                await message.reply("✅ **指令同步成功！**\n1. 伺服器專屬指令已更新 (應可立即使用)。\n2. 全域更新已送出 (可能需 1 小時)。\n\n*注意：若仍未看到指令，請重啟 Discord APP。*")
+                return
+            except Exception as e:
+                await message.reply(f"❌ 同步失敗: {e}")
+                return
 
-        for attachment in message.attachments:
-            if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.webp']):
-                # 每張圖各自建立獨立並發 Task，直接傳入由指令決定的語言
-                asyncio.create_task(handle_image(attachment, message, lang=lang))
+        # 原本的圖片處理邏輯
+        if message.attachments:
+            # 偵測語言指令
+            content_lower = message.content.lower()
+            if "!en" in content_lower or " en" in content_lower or content_lower.endswith("en"):
+                lang = "en"
+            else:
+                lang = "zh"
+
+            for attachment in message.attachments:
+                if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.webp']):
+                    # 每張圖各自建立獨立並發 Task，直接傳入由指令決定的語言
+                    asyncio.create_task(handle_image(attachment, message, lang=lang))
 
 
 if __name__ == "__main__":
