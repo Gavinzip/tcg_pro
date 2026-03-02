@@ -495,6 +495,11 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
 
     terms_to_try = []
     
+    if set_code and number_padded != "000":
+        if jp_name_query:
+            terms_to_try.append(f"{jp_name_query} {set_code} {number_padded}")
+        terms_to_try.append(f"{en_name_query} {set_code} {number_padded}")
+
     # SNKRDUNK search is highly accurate with Set Code (e.g. "ピカチュウ S8a-G", "ピカチュウ SV-P")
     if set_code:
         if jp_name_query:
