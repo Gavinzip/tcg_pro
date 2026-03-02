@@ -1225,73 +1225,76 @@ async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_ur
         return len([r for r in (records_list or []) if r.get('grade') == tgt_grade and (await _parse_d(r['date'])) > cutoff])
     cutoff_12m = datetime.now() - timedelta(days=365)
     
-    if pc_records:
-        if report_pc_records:
-            for r in report_pc_records[:10]:
-                state_label = "Grade" if lang == "en" else "狀態"
-                report_lines.append(f"📅 {r['date']}      💰 ${r['price']:.2f} USD      📝 {state_label}：{r['grade']}")
-            
-            # Filter for statistics: only last 12 months
-            stats_pc_records = []
-            for r in report_pc_records:
-                parsed_date = await _parse_d(r['date'])
-                if parsed_date > cutoff_12m:
-                    stats_pc_records.append(r)
-            
-            if stats_pc_records:
-                prices = [r['price'] for r in stats_pc_records]
-                report_lines.append("📊 Statistics (Last 12 Mo.)" if lang == "en" else "📊 統計資料 (近 12 個月)")
-                report_lines.append(f"　💰 {'Highest':}: ${max(prices):.2f} USD" if lang == "en" else f"　💰 最高成交價：${max(prices):.2f} USD")
-                report_lines.append(f"　💰 {'Lowest':}: ${min(prices):.2f} USD" if lang == "en" else f"　💰 最低成交價：${min(prices):.2f} USD")
-                report_lines.append(f"　💰 {'Average':}: ${sum(prices)/len(prices):.2f} USD" if lang == "en" else f"　💰 平均成交價：${sum(prices)/len(prices):.2f} USD")
-                report_lines.append(f"　📈 {'Records':}: {len(prices)}" if lang == "en" else f"　📈 資料筆數：{len(prices)} 筆")
+    if pc_url:
+        report_lines.append("🏦 PriceCharting 成交紀錄" if lang != "en" else "🏦 PriceCharting Records")
+        if pc_records:
+            if report_pc_records:
+                for r in report_pc_records[:10]:
+                    state_label = "Grade" if lang == "en" else "狀態"
+                    report_lines.append(f"📅 {r['date']}      💰 ${r['price']:.2f} USD      📝 {state_label}：{r['grade']}")
+                
+                # Filter for statistics: only last 12 months
+                stats_pc_records = []
+                for r in report_pc_records:
+                    parsed_date = await _parse_d(r['date'])
+                    if parsed_date > cutoff_12m:
+                        stats_pc_records.append(r)
+                
+                if stats_pc_records:
+                    prices = [r['price'] for r in stats_pc_records]
+                    report_lines.append("📊 Statistics (Last 12 Mo.)" if lang == "en" else "📊 統計資料 (近 12 個月)")
+                    report_lines.append(f"　💰 {'Highest':}: ${max(prices):.2f} USD" if lang == "en" else f"　💰 最高成交價：${max(prices):.2f} USD")
+                    report_lines.append(f"　💰 {'Lowest':}: ${min(prices):.2f} USD" if lang == "en" else f"　💰 最低成交價：${min(prices):.2f} USD")
+                    report_lines.append(f"　💰 {'Average':}: ${sum(prices)/len(prices):.2f} USD" if lang == "en" else f"　💰 平均成交價：${sum(prices)/len(prices):.2f} USD")
+                    report_lines.append(f"　📈 {'Records':}: {len(prices)}" if lang == "en" else f"　📈 資料筆數：{len(prices)} 筆")
+                else:
+                    report_lines.append("📊 Statistics (No records in last 12 mo.)" if lang == "en" else "📊 統計資料 (近 12 個月無成交紀錄)")
             else:
-                report_lines.append("📊 Statistics (No records in last 12 mo.)" if lang == "en" else "📊 統計資料 (近 12 個月無成交紀錄)")
+                no_data_msg = f"PriceCharting: No {grade} records found." if lang == "en" else f"PriceCharting: 無 {grade} 等級的卡片資料"
+                report_lines.append(no_data_msg)
         else:
-            no_data_msg = f"PriceCharting: No {grade} records found." if lang == "en" else f"PriceCharting: 無 {grade} 等級的卡片資料"
-            report_lines.append(no_data_msg)
-    else:
-        report_lines.append("PriceCharting: No data found." if lang == "en" else "PriceCharting: 無此卡片資料")
+            report_lines.append("PriceCharting: No data found." if lang == "en" else "PriceCharting: 無此卡片資料")
     
-    snkr_section_label = "\n---\n🏯 SNKRDUNK Records" if lang == "en" else "\n---\n🏯 SNKRDUNK 成交紀錄"
-    report_lines.append(snkr_section_label)
-    if snkr_records:
-        if '10' in grade:
-            valid_snkr_grades = ['S', 'PSA10', 'PSA 10']
-            target_disp = 'S (PSA 10)'
-        elif grade.lower() == 'ungraded':
-            target_disp = 'A (Raw)'
-        else:
-            target_disp = grade
-            
-        # snkr_target_records is now report_snkr_records
-        if report_snkr_records:
-            for r in report_snkr_records[:10]:
-                usd_price = r['price'] / jpy_rate
-                state_label = "Grade" if lang == "en" else "狀態"
-                report_lines.append(f"📅 {r['date']}      💰 ¥{int(r['price']):,} (~${usd_price:.0f} USD)      📝 {state_label}：{r['grade']}")
-            # Filter for statistics: only last 12 months
-            stats_snkr_records = []
-            for r in report_snkr_records:
-                parsed_date = await _parse_d(r['date'])
-                if parsed_date > cutoff_12m:
-                    stats_snkr_records.append(r)
-
-            if stats_snkr_records:
-                prices = [r['price'] for r in stats_snkr_records]
-                avg_price = sum(prices)/len(prices)
-                report_lines.append("📊 Statistics (Last 12 Mo.)" if lang == "en" else "📊 統計資料 (近 12 個月)")
-                report_lines.append(f"　💰 {'Highest':}: ¥{int(max(prices)):,} (~${max(prices)/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 最高成交價：¥{int(max(prices)):,} (~${max(prices)/jpy_rate:.0f} USD)")
-                report_lines.append(f"　💰 {'Lowest':}: ¥{int(min(prices)):,} (~${min(prices)/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 最低成交價：¥{int(min(prices)):,} (~${min(prices)/jpy_rate:.0f} USD)")
-                report_lines.append(f"　💰 {'Average':}: ¥{int(avg_price):,} (~${avg_price/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 平均成交價：¥{int(avg_price):,} (~${avg_price/jpy_rate:.0f} USD)")
-                report_lines.append(f"　📈 {'Records':}: {len(prices)}" if lang == "en" else f"　📈 資料筆數：{len(prices)} 筆")
+    if snkr_url:
+        snkr_section_label = "\n---\n🏯 SNKRDUNK Records" if lang == "en" else "\n---\n🏯 SNKRDUNK 成交紀錄"
+        report_lines.append(snkr_section_label)
+        if snkr_records:
+            if '10' in grade:
+                valid_snkr_grades = ['S', 'PSA10', 'PSA 10']
+                target_disp = 'S (PSA 10)'
+            elif grade.lower() == 'ungraded':
+                target_disp = 'A (Raw)'
             else:
-                report_lines.append("📊 Statistics (No records in last 12 mo.)" if lang == "en" else "📊 統計資料 (近 12 個月無成交紀錄)")
+                target_disp = grade
+                
+            # snkr_target_records is now report_snkr_records
+            if report_snkr_records:
+                for r in report_snkr_records[:10]:
+                    usd_price = r['price'] / jpy_rate
+                    state_label = "Grade" if lang == "en" else "狀態"
+                    report_lines.append(f"📅 {r['date']}      💰 ¥{int(r['price']):,} (~${usd_price:.0f} USD)      📝 {state_label}：{r['grade']}")
+                # Filter for statistics: only last 12 months
+                stats_snkr_records = []
+                for r in report_snkr_records:
+                    parsed_date = await _parse_d(r['date'])
+                    if parsed_date > cutoff_12m:
+                        stats_snkr_records.append(r)
+
+                if stats_snkr_records:
+                    prices = [r['price'] for r in stats_snkr_records]
+                    avg_price = sum(prices)/len(prices)
+                    report_lines.append("📊 Statistics (Last 12 Mo.)" if lang == "en" else "📊 統計資料 (近 12 個月)")
+                    report_lines.append(f"　💰 {'Highest':}: ¥{int(max(prices)):,} (~${max(prices)/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 最高成交價：¥{int(max(prices)):,} (~${max(prices)/jpy_rate:.0f} USD)")
+                    report_lines.append(f"　💰 {'Lowest':}: ¥{int(min(prices)):,} (~${min(prices)/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 最低成交價：¥{int(min(prices)):,} (~${min(prices)/jpy_rate:.0f} USD)")
+                    report_lines.append(f"　💰 {'Average':}: ¥{int(avg_price):,} (~${avg_price/jpy_rate:.0f} USD)" if lang == "en" else f"　💰 平均成交價：¥{int(avg_price):,} (~${avg_price/jpy_rate:.0f} USD)")
+                    report_lines.append(f"　📈 {'Records':}: {len(prices)}" if lang == "en" else f"　📈 資料筆數：{len(prices)} 筆")
+                else:
+                    report_lines.append("📊 Statistics (No records in last 12 mo.)" if lang == "en" else "📊 統計資料 (近 12 個月無成交紀錄)")
+            else:
+                no_data_msg = f"SNKRDUNK: No {target_disp} records found." if lang == "en" else f"SNKRDUNK: 無 {target_disp} 等級的卡片資料"
+                report_lines.append(no_data_msg)
         else:
-            no_data_msg = f"SNKRDUNK: No {target_disp} records found." if lang == "en" else f"SNKRDUNK: 無 {target_disp} 等級的卡片資料"
-            report_lines.append(no_data_msg)
-    else:
-        report_lines.append("SNKRDUNK: No data found." if lang == "en" else "SNKRDUNK: 無此卡片資料")
+            report_lines.append("SNKRDUNK: No data found." if lang == "en" else "SNKRDUNK: 無此卡片資料")
         
     report_lines.append("\n---")
     if pc_url:
