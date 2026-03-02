@@ -172,7 +172,7 @@ def extract_price(price_str):
     except:
         return 0.0
 
-def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False):
+def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False, target_grade="Ungraded"):
     """
     Given a PriceCharting product URL, fetch (if md_content is None) and parse it.
     Returns (records, resolved_url, pc_img_url).
@@ -217,11 +217,24 @@ def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False):
                     detected_grade = "Ungraded"
                         
                 if detected_grade:
-                    records.append({
-                        "date": date_str,
-                        "price": price_usd,
-                        "grade": detected_grade
-                    })
+                    # Filter by target_grade
+                    grade_clean = target_grade.replace(" ", "").lower()
+                    title_clean = line.replace(" ", "").lower()
+                    
+                    grade_matched = False
+                    if grade_clean == "ungraded":
+                        if not re.search(r'(psa|bgs|cgc|grade|gem)', title_clean):
+                            grade_matched = True
+                    else:
+                        if grade_clean in title_clean:
+                            grade_matched = True
+
+                    if grade_matched:
+                        records.append({
+                            "date": date_str,
+                            "price": price_usd,
+                            "grade": detected_grade
+                        })
 
     # Parser 2: 嘗試 Jina 新版的 TSV 格式 (日期獨立一行，標題與價格在下一行)
     if not records:
@@ -250,11 +263,24 @@ def _fetch_pc_prices_from_url(product_url, md_content=None, skip_hi_res=False):
                 elif not re.search(r'(psa|bgs|cgc|grade|gem)', title_clean):
                     detected_grade = "Ungraded"
                 if detected_grade:
-                    records.append({
-                        "date": current_date,
-                        "price": price_usd,
-                        "grade": detected_grade
-                    })
+                    # Filter by target_grade
+                    grade_clean = target_grade.replace(" ", "").lower()
+                    title_clean = line.replace(" ", "").lower()
+                    
+                    grade_matched = False
+                    if grade_clean == "ungraded":
+                        if not re.search(r'(psa|bgs|cgc|grade|gem)', title_clean):
+                            grade_matched = True
+                    else:
+                        if grade_clean in title_clean:
+                            grade_matched = True
+
+                    if grade_matched:
+                        records.append({
+                            "date": current_date,
+                            "price": price_usd,
+                            "grade": detected_grade
+                        })
 
     # Summary prices
     today_str = datetime.now().strftime('%Y-%m-%d')
@@ -416,11 +442,8 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
             return None, None, None, []
 
         # ── 航海王版本選擇邏輯 ──
-        # 如果是航海王，且有多個同時符合「名稱+編號+SetCode」的 URL，且不是 Alt-Art 明確標示，則返回待選清單
-        if is_one_piece and len(matching_both) > 1:
-            _debug_step("PriceCharting", 1, name_slug, search_url, "AMBIGUOUS", candidate_urls=matching_both, reason="偵測到多個航海王候選版本")
-            print(f"DEBUG: Ambiguous One Piece versions detected: {matching_both}")
-            return None, None, None, matching_both
+        # 自動過濾邏輯已足夠精準，不再需要手動選擇。
+        # (原本在此處會偵測 Ambiguous 並返回待選清單)
 
         # Prioritize the first valid match
         product_url = valid_urls[0]
@@ -454,7 +477,7 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
         return _fetch_pc_prices_from_url(product_url, target_grade=target_grade)
     else:
         print(f"DEBUG: Landed directly on PC product page")
-        return _fetch_pc_prices_from_url(search_url, md_content=md_content)
+        return _fetch_pc_prices_from_url(search_url, md_content=md_content, target_grade=target_grade)
 
 
 def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art=False):
@@ -488,6 +511,7 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
     terms_to_try.append(en_name_query)
     
     product_id = None
+    snkr_step = 0
     
     for term in terms_to_try:
         q = urllib.parse.quote_plus(term)
@@ -906,29 +930,12 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     # 第二階段：執行爬蟲抓取資料
     print("--------------------------------------------------")
     print(f"🌐 正在從網路(PC & SNKRDUNK)抓取市場行情 (異圖/特殊版: {is_alt_art})...")
+    loop = asyncio.get_running_loop()
     # Using independent copy_context().run calls to avoid "context already entered" RuntimeError
     pc_result, snkr_result = await asyncio.gather(
         loop.run_in_executor(None, contextvars.copy_context().run, search_pricecharting, name, number, set_code, grade, is_alt_art, category),
         loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art),
     )
-
-    # 處理 PriceCharting 歧義（航海王版本選擇）
-    if pc_result and len(pc_result) == 4 and pc_result[0] is None:
-        candidates = pc_result[3]
-        if stream_mode:
-            # Bot 模式：回傳「需要選擇」狀態給 bot.py
-            return {
-                "status": "need_selection",
-                "candidates": candidates,
-                "card_info": card_info,
-                "snkr_result": snkr_result,
-                "out_dir": out_dir,
-                "lang": lang
-            }
-        else:
-            # CLI 模式：暫時保底選第一個 (CLI 選取邏輯可後續補強)
-            print(f"⚠️ 偵測到多個候選版本，CLI 模式下暫選第一個: {candidates[0]}")
-            pc_result = await loop.run_in_executor(None, _fetch_pc_prices_from_url, candidates[0])
 
     pc_records, pc_url, pc_img_url = pc_result if pc_result else (None, None, None)
     snkr_records, img_url, snkr_url = snkr_result if snkr_result else (None, None, None)
