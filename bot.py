@@ -140,6 +140,10 @@ async def handle_image(attachment, message, lang="zh"):
             img_path, api_key, out_dir=card_out_dir, stream_mode=True, lang=lang
         )
 
+        # 傳送 AI 模型切換通知（如 Minimax → GPT-4o-mini 備援）
+        for _status in market_report_vision.get_and_clear_notify_msgs():
+            await thread.send(_status)
+
         # 處理「需要版本選擇」的狀態 (航海王)
         if isinstance(result, dict) and result.get("status") == "need_selection":
             candidates = result["candidates"]

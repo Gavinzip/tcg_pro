@@ -29,6 +29,21 @@ def _get_debug_dir():
 def _set_debug_dir(path):
     _debug_dir_var.set(path)
 
+_notify_msgs_var = contextvars.ContextVar('NOTIFY_MSGS', default=None)
+
+def _push_notify(msg):
+    lst = _notify_msgs_var.get()
+    if lst is not None:
+        lst.append(msg)
+
+def get_and_clear_notify_msgs():
+    lst = _notify_msgs_var.get()
+    if lst:
+        msgs = list(lst)
+        lst.clear()
+        return msgs
+    return []
+
 def _debug_save(filename, content):
     """Debug 輔助函數：將內容存入 DEBUG_DIR/filename（若 DEBUG_DIR 已設定）"""
     debug_dir = _get_debug_dir()
@@ -897,6 +912,7 @@ Analyze the card image and extract the following 13 fields:
     # 如果 Minimax API 全部嘗試失敗，則嘗試 OpenAI 作為備援
     if response is None:
         print(f"⚠️ Minimax API 請求失敗，嘗試切換至 GPT-4o-mini...")
+        _push_notify("⚠️ Minimax API 無回應，切換至 GPT-4o-mini 備援重試...")
         openai_key = os.getenv("OPENAI_API_KEY")
         if openai_key:
             return await analyze_image_with_openai(image_path, openai_key, lang=lang)
@@ -929,6 +945,7 @@ Analyze the card image and extract the following 13 fields:
     except Exception as e:
         print(f"❌ Minimax 解析失敗: {e}")
         print(f"⚠️ 嘗試切換至 GPT-4o-mini 進行備援...")
+        _push_notify("⚠️ Minimax 解析失敗，切換至 GPT-4o-mini 備援重試...")
         openai_key = os.getenv("OPENAI_API_KEY")
         if openai_key:
             return await analyze_image_with_openai(image_path, openai_key, lang=lang)
@@ -987,11 +1004,17 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
         print(f"🔍 Debug 子資料夾: {per_image_dir}")
         
     # 第一階段：透過大模型辨識圖片資訊（非阻塞）
+    _notify_msgs_var.set([])  # 初始化本次分析的 Discord 通知佇列
     card_info = await analyze_image_with_minimax(image_path, api_key, lang=lang)
     
     if not card_info:
-        print("❌ 卡片影像辨識失敗，中止處理此圖片。", force=True)
-        return
+        openai_key = os.getenv("OPENAI_API_KEY")
+        if not openai_key:
+            err_msg = "❌ 卡片辨識失敗：Minimax API 無回應，且未設定 OPENAI_API_KEY 備援。請聯繫管理員設定備援金鑰。"
+        else:
+            err_msg = "❌ 卡片影像辨識失敗：Minimax 及 GPT-4o-mini 備援均無法解析此圖片，請確認圖片清晰度並重試。"
+        print(err_msg, force=True)
+        return err_msg
     
     # 從 AI 回傳的 JSON 提取必備資訊
     name = card_info.get("name", "Unknown")
