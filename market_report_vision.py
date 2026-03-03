@@ -1443,8 +1443,8 @@ async def process_image_for_candidates(image_path, api_key):
         loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art, card_language, snkr_variant_kws, True),
     )
     
-    pc_candidates = pc_result[0] if pc_result else []
-    snkr_candidates = snkr_result[0] if snkr_result else []
+    pc_candidates = (pc_result[0] if pc_result else None) or []
+    snkr_candidates = (snkr_result[0] if snkr_result else None) or []
     
     return card_info, {
         "pc": pc_candidates,
