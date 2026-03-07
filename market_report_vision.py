@@ -464,7 +464,7 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
         product_url = valid_urls[0]
         selection_reason = "Default (First match)"
         
-        # Filter based on is_alt_art / is_flagship (features-based override 主導)
+        # Filter based on is_flagship / is_alt_art (features-based override 主導)
         if is_flagship:
             # 旗艦賽獎品卡：尋找包含 flagship 的 URL
             for u in valid_urls:
@@ -473,15 +473,7 @@ def search_pricecharting(name, number, set_code, target_grade, is_alt_art=False,
                     product_url = u
                     selection_reason = "Flagship Filter (偵測到 Flagship Battle 關鍵字)"
                     break
-        elif not is_alt_art:
-            for u in valid_urls:
-                lower_u = u.replace('[', '').replace(']', '').lower()
-                # 航海王普通版不應包含以下關鍵字
-                if "manga" not in lower_u and "alternate-art" not in lower_u and "-sp" not in lower_u and "flagship" not in lower_u:
-                    product_url = u
-                    selection_reason = "Normal Art Filter (無 manga/alternate-art/flagship 關鍵字)"
-                    break
-        else:
+        elif is_alt_art:
             for u in valid_urls:
                 lower_u = u.replace('[', '').replace(']', '').lower()
                 # 航海王異圖版優先尋找包含這些關鍵字的
@@ -621,21 +613,12 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
                 _debug_log(f"  🎯 Variant Filter ({_variant_kws}) 命中 {len(stage1_candidates)} 筆")
             working_set = stage1_candidates if stage1_candidates else unique_matches
             
-            # ── Stage 2: Alt-Art / Normal filter ──────────────────────────
-            alt_art_kws = ["コミパラ", "manga", "パラレル", "-sp", "sr-p", "l-p", "flagship", "フラッグシップ", "フラシ"]
-            if not is_alt_art:
-                stage2 = [(t, p) for t, p in working_set
-                          if not any(kw in t.lower() for kw in alt_art_kws)]
-                if stage2:
-                    selection_reason = "Normal Art Filter (無 Alt-Art 關鍵字)"
-            else:
-                stage2 = [(t, p) for t, p in working_set
-                          if any(kw in t.lower() for kw in alt_art_kws)]
-                if stage2:
-                    selection_reason = "Alt-Art Filter (偵測到 Alt-Art 關鍵字)"
-                    if stage1_candidates:
-                        selection_reason = f"Variant+Alt-Art Filter ({_variant_kws})"
-            working_set2 = stage2 if stage2 else working_set
+            # ── Stage 2: 已移除 ────────────────────────────────────────────
+            # 完全依靠 Stage 1 (Variant 關鍵字) + Stage 3 (語言過濾) 決勝負。
+            # is_alt_art 的 alt-art 二次篩選已刪除，避免誤濾雜誌附錄等非標準命名的異圖版本。
+            if stage1_candidates:
+                selection_reason = f"Variant Filter ({_variant_kws})"
+            working_set2 = working_set
             
             # ── Stage 3: Language filter ───────────────────────────────────
             if card_language == "EN":
@@ -755,7 +738,7 @@ Analyze the card image and extract the following 13 fields:
   "release_info": "Release year and set (required, inferred from card details/markings, e.g. 2023 - 151)",
   "illustrator": "Illustrator (required, the English name in lower-left or lower-right corner; write Unknown if unclear)",
   "market_heat": "Market heat (required, start with High / Medium / Low followed by a concise explanation IN ENGLISH)",
-  "features": "Card features (required, include full-art, special foil treatments, etc.; separate each point with \\n; write IN ENGLISH)",
+  "features": "Card features (required. ⚠️ CRITICAL: Inspect the card carefully for any small rarity symbols or specific variant texts like 'L-P', 'SR-P', 'SEC-P', 'Parallel', 'Alternate Art', or 'Flagship'. If found, you MUST include them here. Also include full-art, special foil treatments, etc. Separate each point with \\n. Write IN ENGLISH)",
   "collection_value": "Collectibility assessment (required, start with High / Medium / Low followed by a short commentary IN ENGLISH)",
   "competitive_freq": "Competitive frequency (required, start with High / Medium / Low followed by a short commentary IN ENGLISH)",
   "is_alt_art": "Is the background manga/comic panel art or parallel art? Boolean true/false. Look carefully at the card BACKGROUND: if it shows black-and-white manga panel grid, write true; if the background is just lightning, effects, or a plain scene — even if it's SEC — write false."
@@ -774,7 +757,7 @@ Analyze the card image and extract the following 13 fields:
   "release_info": "發行年份與系列 (必填，從卡牌標誌或特徵推斷，如 2023 - 151)",
   "illustrator": "插畫家 (必填，左下角或右下角的英文名，看不清可寫 Unknown)",
   "market_heat": "市場熱度描述 (必填，開頭填寫 High / Medium / Low，後面白話文理由請務必使用『繁體中文』撰寫)",
-  "features": "卡片特點 (必填，包含全圖、特殊工藝等，每一行請用 \\n 換行區隔重點，請務必使用『繁體中文』撰寫)",
+  "features": "卡片特點 (必填。⚠️ 極度重要：請仔細觀察卡面是否有微小的罕貴度標示或異圖版本文字，如 'L-P', 'SR-P', 'SEC-P', 'Parallel', 'Alternate Art', 'Flagship' 等。如果有，【必須】寫入此欄位！並包含全圖、特殊工藝等，每一行請用 \\n 換行區隔，請務必使用『繁體中文』撰寫)",
   "collection_value": "收藏價值評估 (必填，開頭填寫 High / Medium / Low，後面白話文評論請務必使用『繁體中文』撰寫)",
   "competitive_freq": "競技頻率評估 (必填，開頭填寫 High / Medium / Low，後面白話文評論請務必使用『繁體中文』撰寫)",
   "is_alt_art": "是否為漫畫背景(Manga/Comic)或異圖(Parallel)？布林值 true/false。請極度仔細觀察卡片的『背景』：如果背景是一格一格的【黑白漫畫分鏡】，請填 true；如果背景只有閃電、特效、或單純場景，就算它是 SEC 也是普通版，『必須』填 false！"
@@ -856,7 +839,7 @@ Analyze the card image and extract the following 13 fields:
   "release_info": "Release year and set (required, inferred from card details/markings, e.g. 2023 - 151)",
   "illustrator": "Illustrator (required, the English name in lower-left or lower-right corner; write Unknown if unclear)",
   "market_heat": "Market heat (required, start with High / Medium / Low followed by a concise explanation IN ENGLISH)",
-  "features": "Card features (required, include full-art, special foil treatments, etc.; separate each point with \\n; write IN ENGLISH)",
+  "features": "Card features (required. ⚠️ CRITICAL: Inspect the card carefully for any small rarity symbols or specific variant texts like 'L-P', 'SR-P', 'SEC-P', 'Parallel', 'Alternate Art', or 'Flagship'. If found, you MUST include them here. Also include full-art, special foil treatments, etc. Separate each point with \\n. Write IN ENGLISH)",
   "collection_value": "Collectibility assessment (required, start with High / Medium / Low followed by a short commentary IN ENGLISH)",
   "competitive_freq": "Competitive frequency (required, start with High / Medium / Low followed by a short commentary IN ENGLISH)",
   "is_alt_art": "Is the background manga/comic panel art or parallel art? Boolean true/false. Look carefully at the card BACKGROUND: if it shows black-and-white manga panel grid, write true; if the background is just lightning, effects, or a plain scene — even if it's SEC — write false."
@@ -875,7 +858,7 @@ Analyze the card image and extract the following 13 fields:
   "release_info": "發行年份與系列 (必填，從卡牌標誌或特徵推斷，如 2023 - 151)",
   "illustrator": "插畫家 (必填，左下角或右下角的英文名，看不清可寫 Unknown)",
   "market_heat": "市場熱度描述 (必填，開頭填寫 High / Medium / Low，後面白話文理由請務必使用『繁體中文』撰寫)",
-  "features": "卡片特點 (必填，包含全圖、特殊工藝等，每一行請用 \\n 換行區隔重點，請務必使用『繁體中文』撰寫)",
+  "features": "卡片特點 (必填。⚠️ 極度重要：請仔細觀察卡面是否有微小的罕貴度標示或異圖版本文字，如 'L-P', 'SR-P', 'SEC-P', 'Parallel', 'Alternate Art', 'Flagship' 等。如果有，【必須】寫入此欄位！並包含全圖、特殊工藝等，每一行請用 \\n 換行區隔，請務必使用『繁體中文』撰寫)",
   "collection_value": "收藏價值評估 (必填，開頭填寫 High / Medium / Low，後面白話文評論請務必使用『繁體中文』撰寫)",
   "competitive_freq": "競技頻率評估 (必填，開頭填寫 High / Medium / Low，後面白話文評論請務必使用『繁體中文』撰寫)",
   "is_alt_art": "是否為漫畫背景(Manga/Comic)或異圖(Parallel)？布林值 true/false。請極度仔細觀察卡片的『背景』：如果背景是一格一格的【黑白漫畫分鏡】，請填 true；如果背景只有閃電、特效、或單純場景，就算它是 SEC 也是普通版，『必須』填 false！"
@@ -1039,6 +1022,12 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     collection_value = card_info.get("collection_value", "Unknown")
     competitive_freq = card_info.get("competitive_freq", "Unknown")
     is_alt_art = card_info.get("is_alt_art", False)
+    if isinstance(is_alt_art, str):
+        is_alt_art = is_alt_art.lower() == "true"
+        
+    # 將原始 AI 分析結果存入 Debug 資料夾
+    _debug_save("step1_meta.json", json.dumps(card_info, ensure_ascii=False, indent=2))
+
     
     # ── features-based override (最高優先級) ──────────────────────────────
     features_lower = features.lower() if features else ""
@@ -1110,6 +1099,17 @@ async def process_single_image(image_path, api_key, out_dir=None, stream_mode=Fa
     # Fallback: if SNKRDUNK has no image, use PriceCharting image
     if not img_url and pc_img_url:
         img_url = pc_img_url
+        
+    # Debug step2: 儲存爬蟲結果
+    _debug_log(f"Step 2 PC: {len(pc_records) if pc_records else 0} 筆, url={pc_url}")
+    _debug_log(f"Step 2 SNKR: {len(snkr_records) if snkr_records else 0} 筆, img={img_url}, url={snkr_url}")
+    _debug_save("step2_pc.json", json.dumps(pc_records or [], indent=2, ensure_ascii=False))
+    _debug_save("step2_snkr.json", json.dumps(snkr_records or [], indent=2, ensure_ascii=False))
+    _debug_save("step2_meta.json", json.dumps({
+        "pc_url": pc_url, "pc_records_count": len(pc_records) if pc_records else 0,
+        "snkr_url": snkr_url, "snkr_records_count": len(snkr_records) if snkr_records else 0,
+        "snkr_img_url": img_url,
+    }, indent=2, ensure_ascii=False))
     
     jpy_rate = get_exchange_rate()
     return await finish_report_after_selection(
@@ -1130,6 +1130,8 @@ async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_ur
     collection_value = card_info.get("collection_value", "Unknown")
     competitive_freq = card_info.get("competitive_freq", "Unknown")
     is_alt_art = card_info.get("is_alt_art", False)
+    if isinstance(is_alt_art, str):
+        is_alt_art = is_alt_art.lower() == "true"
     jp_name = card_info.get("jp_name", "")
     c_name = card_info.get("c_name", "")
     
@@ -1373,11 +1375,6 @@ async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_ur
         final_dest_dir = dest_dir if out_dir else '.'
         
         # We output all the scraped data to report_data.json
-        # Debug step2: 儲存爬蟲結果
-        _debug_log(f"Step 2 PC: {len(pc_records) if pc_records else 0} 筆")
-        _debug_log(f"Step 2 SNKR: {len(snkr_records) if snkr_records else 0} 筆")
-        _debug_save("step2_pc.json", json.dumps(pc_records or [], indent=2, ensure_ascii=False))
-        _debug_save("step2_snkr.json", json.dumps(snkr_records or [], indent=2, ensure_ascii=False))
 
         data_dump = {
             "card_info": card_info,
@@ -1421,6 +1418,8 @@ async def process_image_for_candidates(image_path, api_key):
     category = card_info.get("category", "Pokemon")
     features = card_info.get("features", "Unknown")
     is_alt_art = card_info.get("is_alt_art", False)
+    if isinstance(is_alt_art, str):
+        is_alt_art = is_alt_art.lower() == "true"
     
     features_lower = features.lower() if features else ""
     is_flagship = any(kw in features_lower for kw in ["flagship", "旗艦賽", "flagship battle"])
