@@ -1,0 +1,340 @@
+[01:18:07] PriceCharting: 類別=One Piece (航海王模式)，共 2 種查詢方案: ['Monkey+D.+Luffy+ST01+1', 'Monkey+D.+Luffy+1']
+[01:18:07] SNKRDUNK: 共 5 種查詢方案: ['モンキー・D・ルフィ ST01 001', 'Monkey D. Luffy ST01 001', 'モンキー・D・ルフィ ST01', 'Monkey D. Luffy ST01', 'モンキー・D・ルフィ 001']
+[01:18:07] SNKRDUNK Step 1: 查詢='モンキー・D・ルフィ ST01 001'  URL=https://snkrdunk.com/search?keywords=%E3%83%A2%E3%83%B3%E3%82%AD%E3%83%BC%E3%83%BBD%E3%83%BB%E3%83%AB%E3%83%95%E3%82%A3+ST01+001
+[01:18:07] PriceCharting Step 1: 查詢='Monkey+D.+Luffy+ST01+1'  URL=https://www.pricecharting.com/search-products?q=Monkey+D.+Luffy+ST01+1&type=prices
+[01:18:10] PriceCharting: 從搜尋頁面提取到 100 個候選 URL
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-awakening-of-the-new-era/monkey-d-luffy-alternate-art-op05-119
+[01:18:10]   🔷 [OP] 編號+setcode (無名稱): https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/monkeydluffy-st01-001
+[01:18:10]   🔷 [OP] 編號+setcode (無名稱): https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/monkeydluffy-st01-001
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/monkeydluffy-st01-012
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-98
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-red-st01-007
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-alternate-art-st01-002
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/roronoa-zoro-st01-013
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-st01-007
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-st01-011
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-new-year-st01-007
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-promo/don-card-special-luffy-vol-1
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1877
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/jinbe-alternate-art-st01-005
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-red-st01-004
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/roronoa-zoro-st01-013
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/nintendo-3ds/super-monkey-ball-3d
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-tournament-st01-007
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/brook-st01-011
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1900
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-red-st01-011
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-chrono-toys-chase-2206
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-gold-foil-1-2022
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-errata-st01-007
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/jinbe-st01-005
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-1-2022
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-chase-2206
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-winner-st01-011
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/guard-point-st01-014
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-trains-kung-fu-dugong-1637
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-tournament-st01-011
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-hit-monkey/hit-monkey-1-2010
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-metallic-2138
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-finalist-st01-004
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-winner-st01-004
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/gameboy-advance/gba-video-super-robot-monkey-team-volume-1
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/jinbe-st01-005
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-2206
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-chrono-toys-2206
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-garp-chalice-chase-gitd-2172
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1459
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1771
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1945
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-2052
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-nycc-1459
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-promo/monkey-d-luffy-red-bull-double-don-stamp-prb02-005
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-1
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-black-white-1
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-gold-1
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-rock-1
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-abrera-1-2022
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-jordan-virgin-1-2022
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-laren-1-2022
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-artgerm-1-2022
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-dao-1-2022
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-nguyen-1-2022
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-radhakrishnan-1-2022
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nami-tournament-st01-007
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nico-robin-st01-008
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nico-robin-st01-008
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-st01-004
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/xbox-one/super-monkey-ball-banana-blitz-hd
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/usopp-st01-002
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/xbox-360/carnival-games-monkey-see-monkey-do
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/diable-jambe-st01-016
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/franky-st01-010
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/guard-point-st01-014
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/lego-brickheadz/monkey-d-luffy-40799
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nami-st01-007
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nefeltari-vivi-st01-009
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-participant-st01-004
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/thousand-sunny-st01-017
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-st01-002
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-hit-monkey/hit-monkey-one-shot-1-2010
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-business/monkey-business-1-1993
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat-the-summer-batch/monkey-meat-the-summer-batch-1-2025
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-1-2022
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-film-red-st01-004
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-red-st01-022
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/diable-jambe-st01-016
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-red-st01-002
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/franky-st01-010
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/karoo-st01-003
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nefeltari-vivi-st01-009
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-st01-004
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/thousand-sunny-st01-017
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/brook-tournament-st01-011
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/brook-winner-st01-011
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-nintendo-switch/do-not-feed-the-monkeys
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-playstation-4/do-not-feed-the-monkeys
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/jinbe-errata-st01-005
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/karoo-st01-003
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-garp-chase-gitd-2172
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-finalist-st01-004
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-online-st01-004
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-online-st01-004
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-winner-st01-004
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-nintendo-3ds/super-monkey-ball-3d
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-xbox-one/super-monkey-ball-banana-blitz-hd
+[01:18:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/usopp-red-st01-022
+[01:18:12] SNKRDUNK Step 1: 頁面原始匹配 36 筆
+[01:18:12]   ✅ 符合編號 '001': [171995] ![Image 15: モンキー・D・ルフィ L [ST01-001] (週刊少年ジャンプ2023年6・7号 応募者全員サービス レカフィグ)](https://cdn.snkrdunk.com/upload_bg_removed/TCG-OPC-ST01-001.webp?size=m) ![Image 16: 1位](https://snkrdunk.com/_next/static/media/ribbon-gold.222a58ed.svg) 1 モンキー・D・ルフィ L [ST01-001] (週刊少年ジャンプ2023年6・7号 応募者全員サービス レカフィグ) ¥12,799
+[01:18:12]   ✅ 符合編號 '001': [119360] ![Image 17: モンキー・D・ルフィ L [ST01-001] (スタートデッキ 麦わらの一味)](https://cdn.snkrdunk.com/upload_bg_removed/20230405040352-0.webp?size=m) ![Image 18: 2位](https://snkrdunk.com/_next/static/media/ribbon-silver.70b1724e.svg) 2 モンキー・D・ルフィ L [ST01-001] (スタートデッキ 麦わらの一味) ¥1,000
+[01:18:12]   ✅ 符合編號 '001': [102650] ![Image 19: モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001] (フラッグシップバトル優勝記念品)](https://cdn.snkrdunk.com/upload_bg_removed/20221107034212-1.webp?size=m) ![Image 20: 3位](https://snkrdunk.com/_next/static/media/ribbon-bronze.edee5b8b.svg) 3 モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001] (フラッグシップバトル優勝記念品) ¥2,900,000
+[01:18:12]   ✅ 符合編號 '001': [255830] ![Image 21: モンキー・D・ルフィ L [ST01-001]【中国語版】(プロモーションカード「2023年 中国本土選手権 優勝記念品」)](https://cdn.snkrdunk.com/upload_bg_removed/OPC-EN-TCG-ST01-001-20240424-of.webp?size=m) ![Image 22: 6位](https://snkrdunk.com/_next/static/media/circle-black.6e7c8814.svg) 4 モンキー・D・ルフィ L [ST01-001]【中国語版】(プロモーションカード「2023年 中国本土選手権 優勝記念品」) 出品待ち
+[01:18:12]   ✅ 符合編號 '001': [215507] ![Image 23: モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001]【英語版】(フラッグシップバトル優勝記念品)](https://cdn.snkrdunk.com/upload_bg_removed/20240303085159-0.webp?size=m) ![Image 24: 6位](https://snkrdunk.com/_next/static/media/circle-black.6e7c8814.svg) 5 モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001]【英語版】(フラッグシップバトル優勝記念品) 出品待ち
+[01:18:12]   ✅ 符合編號 '001': [199698] ![Image 25: モンキー・D・ルフィ L [ST01-001]【英語版】(スタートデッキ「麦わらの一味」)](https://cdn.snkrdunk.com/upload_bg_removed/OPC-EN-TCG-ST01-001-of.webp?size=m) ![Image 26: 6位](https://snkrdunk.com/_next/static/media/circle-black.6e7c8814.svg) 6 モンキー・D・ルフィ L [ST01-001]【英語版】(スタートデッキ「麦わらの一味」) 出品待ち
+[01:19:09] PriceCharting: 類別=One Piece (航海王模式)，共 2 種查詢方案: ['Monkey+D.+Luffy+ST01+1', 'Monkey+D.+Luffy+1']
+[01:19:09] SNKRDUNK: 共 5 種查詢方案: ['モンキー・D・ルフィ ST01 001', 'Monkey D. Luffy ST01 001', 'モンキー・D・ルフィ ST01', 'Monkey D. Luffy ST01', 'モンキー・D・ルフィ 001']
+[01:19:09] PriceCharting Step 1: 查詢='Monkey+D.+Luffy+ST01+1'  URL=https://www.pricecharting.com/search-products?q=Monkey+D.+Luffy+ST01+1&type=prices
+[01:19:09] SNKRDUNK Step 1: 查詢='モンキー・D・ルフィ ST01 001'  URL=https://snkrdunk.com/search?keywords=%E3%83%A2%E3%83%B3%E3%82%AD%E3%83%BC%E3%83%BBD%E3%83%BB%E3%83%AB%E3%83%95%E3%82%A3+ST01+001
+[01:19:09] SNKRDUNK Step 1: 頁面原始匹配 36 筆
+[01:19:09]   ✅ 符合編號 '001': [171995] ![Image 15: モンキー・D・ルフィ L [ST01-001] (週刊少年ジャンプ2023年6・7号 応募者全員サービス レカフィグ)](https://cdn.snkrdunk.com/upload_bg_removed/TCG-OPC-ST01-001.webp?size=m) ![Image 16: 1位](https://snkrdunk.com/_next/static/media/ribbon-gold.222a58ed.svg) 1 モンキー・D・ルフィ L [ST01-001] (週刊少年ジャンプ2023年6・7号 応募者全員サービス レカフィグ) ¥12,799
+[01:19:09]   ✅ 符合編號 '001': [119360] ![Image 17: モンキー・D・ルフィ L [ST01-001] (スタートデッキ 麦わらの一味)](https://cdn.snkrdunk.com/upload_bg_removed/20230405040352-0.webp?size=m) ![Image 18: 2位](https://snkrdunk.com/_next/static/media/ribbon-silver.70b1724e.svg) 2 モンキー・D・ルフィ L [ST01-001] (スタートデッキ 麦わらの一味) ¥1,000
+[01:19:09]   ✅ 符合編號 '001': [102650] ![Image 19: モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001] (フラッグシップバトル優勝記念品)](https://cdn.snkrdunk.com/upload_bg_removed/20221107034212-1.webp?size=m) ![Image 20: 3位](https://snkrdunk.com/_next/static/media/ribbon-bronze.edee5b8b.svg) 3 モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001] (フラッグシップバトル優勝記念品) ¥2,900,000
+[01:19:09]   ✅ 符合編號 '001': [255830] ![Image 21: モンキー・D・ルフィ L [ST01-001]【中国語版】(プロモーションカード「2023年 中国本土選手権 優勝記念品」)](https://cdn.snkrdunk.com/upload_bg_removed/OPC-EN-TCG-ST01-001-20240424-of.webp?size=m) ![Image 22: 6位](https://snkrdunk.com/_next/static/media/circle-black.6e7c8814.svg) 4 モンキー・D・ルフィ L [ST01-001]【中国語版】(プロモーションカード「2023年 中国本土選手権 優勝記念品」) 出品待ち
+[01:19:09]   ✅ 符合編號 '001': [215507] ![Image 23: モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001]【英語版】(フラッグシップバトル優勝記念品)](https://cdn.snkrdunk.com/upload_bg_removed/20240303085159-0.webp?size=m) ![Image 24: 6位](https://snkrdunk.com/_next/static/media/circle-black.6e7c8814.svg) 5 モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001]【英語版】(フラッグシップバトル優勝記念品) 出品待ち
+[01:19:09]   ✅ 符合編號 '001': [199698] ![Image 25: モンキー・D・ルフィ L [ST01-001]【英語版】(スタートデッキ「麦わらの一味」)](https://cdn.snkrdunk.com/upload_bg_removed/OPC-EN-TCG-ST01-001-of.webp?size=m) ![Image 26: 6位](https://snkrdunk.com/_next/static/media/circle-black.6e7c8814.svg) 6 モンキー・D・ルフィ L [ST01-001]【英語版】(スタートデッキ「麦わらの一味」) 出品待ち
+[01:19:09] PriceCharting: 從搜尋頁面提取到 100 個候選 URL
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-awakening-of-the-new-era/monkey-d-luffy-alternate-art-op05-119
+[01:19:09]   🔷 [OP] 編號+setcode (無名稱): https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/monkeydluffy-st01-001
+[01:19:09]   🔷 [OP] 編號+setcode (無名稱): https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/monkeydluffy-st01-001
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/monkeydluffy-st01-012
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-98
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-red-st01-007
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-alternate-art-st01-002
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/roronoa-zoro-st01-013
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-st01-007
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-st01-011
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-new-year-st01-007
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-promo/don-card-special-luffy-vol-1
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1877
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/jinbe-alternate-art-st01-005
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-red-st01-004
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/roronoa-zoro-st01-013
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/nintendo-3ds/super-monkey-ball-3d
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-tournament-st01-007
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/brook-st01-011
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1900
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-red-st01-011
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-chrono-toys-chase-2206
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-gold-foil-1-2022
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-errata-st01-007
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/jinbe-st01-005
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-1-2022
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-chase-2206
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-winner-st01-011
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/guard-point-st01-014
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-trains-kung-fu-dugong-1637
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-tournament-st01-011
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-hit-monkey/hit-monkey-1-2010
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-metallic-2138
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-finalist-st01-004
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-winner-st01-004
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/gameboy-advance/gba-video-super-robot-monkey-team-volume-1
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/jinbe-st01-005
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-2206
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-chrono-toys-2206
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-garp-chalice-chase-gitd-2172
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1459
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1771
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1945
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-2052
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-nycc-1459
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-promo/monkey-d-luffy-red-bull-double-don-stamp-prb02-005
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-1
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-black-white-1
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-gold-1
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-rock-1
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-abrera-1-2022
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-jordan-virgin-1-2022
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-laren-1-2022
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-artgerm-1-2022
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-dao-1-2022
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-nguyen-1-2022
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-radhakrishnan-1-2022
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nami-tournament-st01-007
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nico-robin-st01-008
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nico-robin-st01-008
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-st01-004
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/xbox-one/super-monkey-ball-banana-blitz-hd
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/usopp-st01-002
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/xbox-360/carnival-games-monkey-see-monkey-do
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/diable-jambe-st01-016
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/franky-st01-010
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/guard-point-st01-014
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/lego-brickheadz/monkey-d-luffy-40799
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nami-st01-007
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nefeltari-vivi-st01-009
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-participant-st01-004
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/thousand-sunny-st01-017
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-st01-002
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-hit-monkey/hit-monkey-one-shot-1-2010
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-business/monkey-business-1-1993
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat-the-summer-batch/monkey-meat-the-summer-batch-1-2025
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-1-2022
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-film-red-st01-004
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-red-st01-022
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/diable-jambe-st01-016
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-red-st01-002
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/franky-st01-010
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/karoo-st01-003
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nefeltari-vivi-st01-009
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-st01-004
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/thousand-sunny-st01-017
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/brook-tournament-st01-011
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/brook-winner-st01-011
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-nintendo-switch/do-not-feed-the-monkeys
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-playstation-4/do-not-feed-the-monkeys
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/jinbe-errata-st01-005
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/karoo-st01-003
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-garp-chase-gitd-2172
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-finalist-st01-004
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-online-st01-004
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-online-st01-004
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-winner-st01-004
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-nintendo-3ds/super-monkey-ball-3d
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-xbox-one/super-monkey-ball-banana-blitz-hd
+[01:19:09]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/usopp-red-st01-022
+[01:19:09] 🌐 Language detected: JP (預設日文版)
+[01:19:09] SNKRDUNK: 共 5 種查詢方案: ['モンキー・D・ルフィ ST01 001', 'Monkey D. Luffy ST01 001', 'モンキー・D・ルフィ ST01', 'Monkey D. Luffy ST01', 'モンキー・D・ルフィ 001']
+[01:19:09] PriceCharting: 類別=One Piece (航海王模式)，共 2 種查詢方案: ['Monkey+D.+Luffy+ST01+1', 'Monkey+D.+Luffy+1']
+[01:19:09] SNKRDUNK Step 1: 查詢='モンキー・D・ルフィ ST01 001'  URL=https://snkrdunk.com/search?keywords=%E3%83%A2%E3%83%B3%E3%82%AD%E3%83%BC%E3%83%BBD%E3%83%BB%E3%83%AB%E3%83%95%E3%82%A3+ST01+001
+[01:19:09] PriceCharting Step 1: 查詢='Monkey+D.+Luffy+ST01+1'  URL=https://www.pricecharting.com/search-products?q=Monkey+D.+Luffy+ST01+1&type=prices
+[01:19:10] SNKRDUNK Step 1: 頁面原始匹配 36 筆
+[01:19:10]   ✅ 符合編號 '001': [171995] ![Image 15: モンキー・D・ルフィ L [ST01-001] (週刊少年ジャンプ2023年6・7号 応募者全員サービス レカフィグ)](https://cdn.snkrdunk.com/upload_bg_removed/TCG-OPC-ST01-001.webp?size=m) ![Image 16: 1位](https://snkrdunk.com/_next/static/media/ribbon-gold.222a58ed.svg) 1 モンキー・D・ルフィ L [ST01-001] (週刊少年ジャンプ2023年6・7号 応募者全員サービス レカフィグ) ¥12,799
+[01:19:10]   ✅ 符合編號 '001': [119360] ![Image 17: モンキー・D・ルフィ L [ST01-001] (スタートデッキ 麦わらの一味)](https://cdn.snkrdunk.com/upload_bg_removed/20230405040352-0.webp?size=m) ![Image 18: 2位](https://snkrdunk.com/_next/static/media/ribbon-silver.70b1724e.svg) 2 モンキー・D・ルフィ L [ST01-001] (スタートデッキ 麦わらの一味) ¥1,000
+[01:19:10]   ✅ 符合編號 '001': [102650] ![Image 19: モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001] (フラッグシップバトル優勝記念品)](https://cdn.snkrdunk.com/upload_bg_removed/20221107034212-1.webp?size=m) ![Image 20: 3位](https://snkrdunk.com/_next/static/media/ribbon-bronze.edee5b8b.svg) 3 モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001] (フラッグシップバトル優勝記念品) ¥2,900,000
+[01:19:10]   ✅ 符合編號 '001': [255830] ![Image 21: モンキー・D・ルフィ L [ST01-001]【中国語版】(プロモーションカード「2023年 中国本土選手権 優勝記念品」)](https://cdn.snkrdunk.com/upload_bg_removed/OPC-EN-TCG-ST01-001-20240424-of.webp?size=m) ![Image 22: 6位](https://snkrdunk.com/_next/static/media/circle-black.6e7c8814.svg) 4 モンキー・D・ルフィ L [ST01-001]【中国語版】(プロモーションカード「2023年 中国本土選手権 優勝記念品」) 出品待ち
+[01:19:10]   ✅ 符合編號 '001': [215507] ![Image 23: モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001]【英語版】(フラッグシップバトル優勝記念品)](https://cdn.snkrdunk.com/upload_bg_removed/20240303085159-0.webp?size=m) ![Image 24: 6位](https://snkrdunk.com/_next/static/media/circle-black.6e7c8814.svg) 5 モンキー・D・ルフィ L シリアルナンバー入り (開封済) [ST01-001]【英語版】(フラッグシップバトル優勝記念品) 出品待ち
+[01:19:10]   ✅ 符合編號 '001': [199698] ![Image 25: モンキー・D・ルフィ L [ST01-001]【英語版】(スタートデッキ「麦わらの一味」)](https://cdn.snkrdunk.com/upload_bg_removed/OPC-EN-TCG-ST01-001-of.webp?size=m) ![Image 26: 6位](https://snkrdunk.com/_next/static/media/circle-black.6e7c8814.svg) 6 モンキー・D・ルフィ L [ST01-001]【英語版】(スタートデッキ「麦わらの一味」) 出品待ち
+[01:19:10]   🌐 語言過濾選中日文版: [171995]
+[01:19:10] PriceCharting: 從搜尋頁面提取到 100 個候選 URL
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-awakening-of-the-new-era/monkey-d-luffy-alternate-art-op05-119
+[01:19:10]   🔷 [OP] 編號+setcode (無名稱): https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/monkeydluffy-st01-001
+[01:19:10]   🔷 [OP] 編號+setcode (無名稱): https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/monkeydluffy-st01-001
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/monkeydluffy-st01-012
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-98
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-red-st01-007
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-alternate-art-st01-002
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/roronoa-zoro-st01-013
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-st01-007
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-st01-011
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-new-year-st01-007
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-promo/don-card-special-luffy-vol-1
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1877
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/jinbe-alternate-art-st01-005
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-red-st01-004
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/roronoa-zoro-st01-013
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/nintendo-3ds/super-monkey-ball-3d
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-tournament-st01-007
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/brook-st01-011
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1900
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-red-st01-011
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-chrono-toys-chase-2206
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-gold-foil-1-2022
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nami-errata-st01-007
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/jinbe-st01-005
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-1-2022
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-chase-2206
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-winner-st01-011
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/guard-point-st01-014
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-trains-kung-fu-dugong-1637
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/brook-tournament-st01-011
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-hit-monkey/hit-monkey-1-2010
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-metallic-2138
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-finalist-st01-004
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-winner-st01-004
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/gameboy-advance/gba-video-super-robot-monkey-team-volume-1
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/jinbe-st01-005
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-2206
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-dragon-chrono-toys-2206
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-garp-chalice-chase-gitd-2172
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1459
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1771
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-1945
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-2052
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-luffy-nycc-1459
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-promo/monkey-d-luffy-red-bull-double-don-stamp-prb02-005
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-1
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-black-white-1
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-gold-1
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-asia/monkey-king-rock-1
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-abrera-1-2022
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-jordan-virgin-1-2022
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat/monkey-meat-laren-1-2022
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-artgerm-1-2022
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-dao-1-2022
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-nguyen-1-2022
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-radhakrishnan-1-2022
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nami-tournament-st01-007
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nico-robin-st01-008
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nico-robin-st01-008
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-st01-004
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/xbox-one/super-monkey-ball-banana-blitz-hd
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/usopp-st01-002
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/xbox-360/carnival-games-monkey-see-monkey-do
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/diable-jambe-st01-016
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/franky-st01-010
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/guard-point-st01-014
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/lego-brickheadz/monkey-d-luffy-40799
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nami-st01-007
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/nefeltari-vivi-st01-009
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-participant-st01-004
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/thousand-sunny-st01-017
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-st01-002
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-hit-monkey/hit-monkey-one-shot-1-2010
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-business/monkey-business-1-1993
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-meat-the-summer-batch/monkey-meat-the-summer-batch-1-2025
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/comic-books-monkey-prince/monkey-prince-1-2022
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-film-red-st01-004
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-red-st01-022
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/diable-jambe-st01-016
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/usopp-red-st01-002
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/franky-st01-010
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/karoo-st01-003
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/nefeltari-vivi-st01-009
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-st01-004
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/thousand-sunny-st01-017
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/brook-tournament-st01-011
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/brook-winner-st01-011
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-nintendo-switch/do-not-feed-the-monkeys
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-playstation-4/do-not-feed-the-monkeys
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/jinbe-errata-st01-005
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/karoo-st01-003
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/funko-pop-animation/monkey-d-garp-chase-gitd-2172
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-finalist-st01-004
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-online-st01-004
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/sanji-online-st01-004
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/sanji-winner-st01-004
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-nintendo-3ds/super-monkey-ball-3d
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/pal-xbox-one/super-monkey-ball-banana-blitz-hd
+[01:19:10]   ❌ [OP] URL 不符合: https://www.pricecharting.com/game/one-piece-japanese-starter-deck-1-straw-hat-crew/usopp-red-st01-022
+[01:19:18] Step 2 PC: 48 筆, url=https://www.pricecharting.com/game/one-piece-starter-deck-1-straw-hat-crew/monkeydluffy-st01-001
+[01:19:18] Step 2 SNKR: 77 筆, img=https://cdn.snkrdunk.com/upload_bg_removed/TCG-OPC-ST01-001.webp, url=https://snkrdunk.com/apparels/171995

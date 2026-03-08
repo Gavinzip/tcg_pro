@@ -973,34 +973,41 @@ async def main():
                                    debug_session_root=debug_session_root, 
                                    batch_index=idx)
 
-async def process_single_image(image_path, api_key, out_dir=None, stream_mode=False, lang="zh", debug_session_root=None, batch_index=1):
-    if not os.path.exists(image_path):
-        print(f"❌ Error: 找不到圖片檔案 -> {image_path}", force=True)
-        return
+async def process_single_image(image_path, api_key, out_dir=None, stream_mode=False, lang="zh", debug_session_root=None, batch_index=1, external_card_info=None):
+    if not external_card_info:
+        if not image_path or not os.path.exists(image_path):
+            print(f"❌ Error: 找不到圖片檔案 -> {image_path}", force=True)
+            return
     
     # Setup per-image debug directory if root is provided
     if debug_session_root:
-        img_stem = re.sub(r'[^A-Za-z0-9]', '_', os.path.splitext(os.path.basename(image_path))[0])[:40]
+        stem_source = image_path if image_path else "external_json"
+        img_stem = re.sub(r'[^A-Za-z0-9]', '_', os.path.splitext(os.path.basename(stem_source))[0])[:40]
         per_image_dir = os.path.join(debug_session_root, f"{batch_index:02d}_{img_stem}")
         os.makedirs(per_image_dir, exist_ok=True)
         _set_debug_dir(per_image_dir)
         print(f"🔍 Debug 子資料夾: {per_image_dir}")
         
-    # 第一階段：透過大模型辨識圖片資訊（GPT-4o-mini 優先，Minimax 備援）
+    # 第一階段：取得卡片資訊 (Recognition Phase)
     _notify_msgs_var.set([])  # 初始化本次分析的 Discord 通知佇列
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if openai_key:
-        card_info = await analyze_image_with_openai(image_path, openai_key, lang=lang)
-        if not card_info:
-            _push_notify("⚠️ GPT-4o-mini 無回應，切換至 Minimax 備援重試...")
-            print("⚠️ GPT-4o-mini 辨識失敗，切換至 Minimax...")
-            card_info = await analyze_image_with_minimax(image_path, api_key, lang=lang)
+    
+    if external_card_info:
+        card_info = external_card_info
+        print(f"📡 [OpenClaw] 使用外部傳入的 JSON 資訊，跳過視覺辨識流程。")
     else:
-        print("⚠️ 未設定 OPENAI_API_KEY，直接使用 Minimax 辨識。")
-        card_info = await analyze_image_with_minimax(image_path, api_key, lang=lang)
+        openai_key = os.getenv("OPENAI_API_KEY")
+        if openai_key:
+            card_info = await analyze_image_with_openai(image_path, openai_key, lang=lang)
+            if not card_info:
+                _push_notify("⚠️ GPT-4o-mini 無回應，切換至 Minimax 備援重試...")
+                print("⚠️ GPT-4o-mini 辨識失敗，切換至 Minimax...")
+                card_info = await analyze_image_with_minimax(image_path, api_key, lang=lang)
+        else:
+            print("⚠️ 未設定 OPENAI_API_KEY，直接使用 Minimax 辨識。")
+            card_info = await analyze_image_with_minimax(image_path, api_key, lang=lang)
 
     if not card_info:
-        if not openai_key:
+        if not os.getenv("OPENAI_API_KEY"):
             err_msg = "❌ 卡片辨識失敗：未設定 OPENAI_API_KEY，且 Minimax API 亦無回應。請聯繫管理員設定 OpenAI 金鑰。"
         else:
             err_msg = "❌ 卡片影像辨識失敗：GPT-4o-mini 及 Minimax 備援均無法解析此圖片，請確認圖片清晰度並重試。"
@@ -1395,18 +1402,18 @@ async def finish_report_after_selection(card_info, pc_records, pc_url, pc_img_ur
     
     return final_report
 
-async def process_image_for_candidates(image_path, api_key):
+async def process_image_for_candidates(image_path, api_key, lang="zh"):
     """(Manual Mode) Analyzes image and returns URL candidates from PC and SNKRDUNK."""
     if not os.path.exists(image_path):
         return None, "找不到圖片檔案"
         
     openai_key = os.getenv("OPENAI_API_KEY")
     if openai_key:
-        card_info = await analyze_image_with_openai(image_path, openai_key)
+        card_info = await analyze_image_with_openai(image_path, openai_key, lang=lang)
         if not card_info:
-            card_info = await analyze_image_with_minimax(image_path, api_key)
+            card_info = await analyze_image_with_minimax(image_path, api_key, lang=lang)
     else:
-        card_info = await analyze_image_with_minimax(image_path, api_key)
+        card_info = await analyze_image_with_minimax(image_path, api_key, lang=lang)
     if not card_info:
         return None, "卡片影像辨識失敗"
     
