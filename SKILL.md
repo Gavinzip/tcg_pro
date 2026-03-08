@@ -66,6 +66,22 @@ If a card has multiple versions (e.g., One Piece Parallel Art), `run_openclaw` r
 
 ---
 
+## 🤖 For AI Agents & Robots
+
+If you are an AI agent with image analysis capabilities (like Gemini, GPT-4o, etc.), you should follow **Flow A** for maximum efficiency.
+
+### 🧩 The "Handoff" Protocol
+1. **Analyze**: Use your own internal vision tools to identify the card's `name`, `number`, and `set_code`.
+2. **Transform**: Format your findings into the `card_info` JSON schema defined above.
+3. **Execute**: Call OpenClaw via CLI using the `--json` or `--json_file` flag to generate the final market report.
+
+**CLI Example for Agents:**
+```bash
+python3 openclaw_facade.py --mode full --json '{"name": "Mewtwo", "number": "150/165"}'
+```
+
+---
+
 ## 👾 Discord Integration Guide
 Use **Threads** to isolate analysis and keep channels clean:
 1. Reply to user -> Create Thread.
@@ -75,6 +91,6 @@ Use **Threads** to isolate analysis and keep channels clean:
 ---
 
 ## 📁 Directory Structure
-- `openclaw_facade.py`: Unified entry point.
+- `openclaw_facade.py`: Unified entry point (Supports CLI `--json` discovery).
 - `scripts/`: Internal logic and visual assets.
 - `SKILL.md`: This guide.

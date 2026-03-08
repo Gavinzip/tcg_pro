@@ -90,15 +90,31 @@ async def run_openclaw(image_path=None, mode="json", lang="zh", debug_dir=None, 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="OpenClaw: TCG Vision & Market Intelligence")
-    parser.add_argument("image", help="Path to the card image")
+    parser.add_argument("image", nargs="?", help="Path to the card image (optional if --json or --json_file is provided)")
     parser.add_argument("--mode", choices=["json", "full"], default="json", help="Mode: json (recognition) or full (report)")
     parser.add_argument("--lang", choices=["zh", "en"], default="zh", help="Language for output")
     parser.add_argument("--debug", help="Directory to save debug logs and artifacts")
+    parser.add_argument("--json", help="Raw JSON string of card metadata (Flow A)")
+    parser.add_argument("--json_file", help="Path to a JSON file containing card metadata (Flow A)")
     
     args = parser.parse_args()
     
     from dotenv import load_dotenv
     load_dotenv()
 
-    result = asyncio.run(run_openclaw(args.image, mode=args.mode, lang=args.lang, debug_dir=args.debug))
+    # 處理傳入的 JSON 資訊
+    external_card_info = None
+    if args.json:
+        external_card_info = json.loads(args.json)
+    elif args.json_file and os.path.exists(args.json_file):
+        with open(args.json_file, 'r', encoding='utf-8') as f:
+            external_card_info = json.load(f)
+
+    result = asyncio.run(run_openclaw(
+        args.image, 
+        mode=args.mode, 
+        lang=args.lang, 
+        debug_dir=args.debug, 
+        card_info=external_card_info
+    ))
     print(json.dumps(result, indent=2, ensure_ascii=False))
