@@ -1,47 +1,50 @@
 # OpenClaw Skill 🐾
 
-OpenClaw is a powerful TCG intelligence engine designed for collectors and players. It provides instant card recognition, market value analysis, and investment-grade reporting for Pokémon and One Piece TCG.
+Welcome to **OpenClaw**, the high-performance TCG intelligence engine. Whether you are a developer or an AI agent, this guide will help you get started in seconds.
 
-## 📂 Directory Structure
+---
 
-```text
-tcg_pro copy/
-├── openclaw_facade.py      # Main entry point (Facade)
-├── SKILL.md                # This documentation
-└── scripts/                # Core logic and assets
-    ├── fonts/              # Typography assets
-    ├── templates/          # HTML report templates
-    ├── market_report_vision.py # Market analysis engine
-    └── image_generator.py  # High-end report generation
+## ⚡ Quick Start
+
+### 1. 🔑 API Configuration
+To unlock full vision and market analysis, create a `.env` file in the root or set these environment variables:
+
+```env
+# Priority: Precise recognition & Japanese card support
+MINIMAX_API_KEY=your_minimax_key_here
+
+# Fallback: General recognition & report refinement
+OPENAI_API_KEY=your_openai_key_here
+```
+> [!TIP]
+> If no keys are provided, OpenClaw falls back to **Native Mode** (Basic identification based on file metadata).
+
+### 2. Choose Your Entry Flow
+
+OpenClaw is designed to be "smart-agent aware." You can choose between two primary workflows:
+
+#### **Flow A: External Recognition (Agent Data)**
+*Best if your AI Agent already analyzed the image.*
+- **Action**: Pass pre-extracted JSON to `card_info`.
+- **Result**: Skips vision phase; performs instant market analysis.
+```python
+result = await run_openclaw(mode="full", card_info={"name": "Pikachu V", "number": "005/015"})
 ```
 
-## 🚀 Usage Modes
-
-OpenClaw supports two entry flows via `run_openclaw(image_path=None, mode="json", card_info=None)`:
-
-### Flow A: External Recognition (Agent Data)
-AI Agent already has the card JSON. Skip internal vision and generate report directly.
+#### **Flow B: Internal Recognition (Image Path)**
+*Best for end-to-end automation.*
+- **Action**: Pass the `image_path`.
+- **Result**: OpenClaw handles Vision (Native/LLM) + Market Analysis + Posters.
 ```python
-# Pass card_info JSON directly
-result = await run_openclaw(mode="full", card_info={
-    "name": "Pikachu V",
-    "number": "005/015",
-    "set_code": "PROMO",
-    "grade": "Common"
-})
-```
-
-### Flow B: Internal Recognition (Image Path)
-Pass an image path; OpenClaw handles vision (Native or LLM) + report.
-```python
-# Pass image_path
 result = await run_openclaw(image_path="card.jpg", mode="full")
 ```
+
+---
 
 ## 📊 Technical Specifications
 
 ### Card Metadata Schema (`card_info`)
-Whether extracted by an agent or OpenClaw, the card metadata should follow this schema:
+Regardless of the flow, card data follows this standard:
 ```json
 {
   "name": "Venusaur ex",
@@ -51,47 +54,27 @@ Whether extracted by an agent or OpenClaw, the card metadata should follow this 
   "category": "Pokemon",
   "is_alt_art": false,
   "market_heat": "High",
-  "collection_value": "Medium",
-  "features": "Full art, holo",
   "illustrator": "Mitsuhiro Arita"
 }
 ```
 
-### Operation Modes
-1. **`mode="json"`**: Returns the `card_info` JSON.
-2. **`mode="full"`**: Returns `report_text` + `poster_data`. **Requires LLM Keys if internal vision is used.**
+### Disambiguation Protocol (`need_selection`)
+If a card has multiple versions (e.g., One Piece Parallel Art), `run_openclaw` returns:
+- `status`: `"need_selection"`
+- `candidates`: List of candidate URLs.
+**Action**: Show candidates to the user, then call `generate_report_from_selected(card_info, selected_url)`.
 
-**Return Structure:**
-- `report_text`: A detailed Markdown analysis.
-- `poster_data`: (Optional) Metadata used to generate posters.
-- `status`: `"success"` or `"need_selection"`.
-
-#### ⚠️ Disambiguation Protocol (`need_selection`)
-If the system finds multiple versions for a card (e.g., One Piece Parallel Art), it returns:
-```json
-{
-  "status": "need_selection",
-  "candidates": ["url_to_version_1", "url_to_version_2"],
-  "card_info": { ... }
-}
-```
-**Action Required**: The developer must show these candidates to the user and then call `generate_report_from_selected(card_info, selected_pc_url, selected_snkr_url)` to finish.
+---
 
 ## 👾 Discord Integration Guide
+Use **Threads** to isolate analysis and keep channels clean:
+1. Reply to user -> Create Thread.
+2. Run `run_openclaw`.
+3. Post results (Markdown text + Generated Posters) into the thread.
 
-When integrating into Discord, use **Threads** to isolate analysis:
+---
 
-```python
-# Create thread -> Send "Analyzing..."
-result = await run_openclaw(img_path, mode="full")
-
-if result.get("status") == "need_selection":
-    # Show buttons with candidates
-    # Wait for user click -> call generate_report_from_selected
-else:
-    # Send report_text and generated posters
-```
-
-## 🔑 Environment Variables
-- `MINIMAX_API_KEY`: Priority vision model.
-- `OPENAI_API_KEY`: Fallback vision model and report refinement.
+## 📁 Directory Structure
+- `openclaw_facade.py`: Unified entry point.
+- `scripts/`: Internal logic and visual assets.
+- `SKILL.md`: This guide.
