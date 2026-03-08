@@ -51,7 +51,44 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-## 🔑 Environment Variables
+## � Discord Integration Guide (Best Practices)
+
+When integrating OpenClaw into a Discord Bot, it is recommended to use **Threads** to keep the channel clean and provide a focused analysis space.
+
+### 1. Unified Message & Thread Flow
+Instead of flooding the channel, create a private/public thread for each analysis:
+
+```python
+async def on_message(message):
+    if message.attachments:
+        # 1. Reply to start the thread
+        init_msg = await message.reply("🃏 收到圖片，正在建立分析討論串...")
+        
+        # 2. Create the thread
+        thread = await init_msg.create_thread(name="卡片分析報表", auto_archive_duration=60)
+        
+        # 3. Add the user to the thread
+        await thread.add_user(message.author)
+
+        # 4. Save and run OpenClaw
+        img_path = await attachment.save(temp_path)
+        result = await run_openclaw(img_path, mode="full")
+        
+        # 5. Post chunks to thread
+        for chunk in smart_split(result["report_text"]):
+            await thread.send(chunk)
+            
+        # 6. Post posters
+        if "poster_data" in result:
+             paths = await mrv.generate_posters(result["poster_data"])
+             for p in paths:
+                 await thread.send(file=discord.File(p))
+```
+
+### 2. Handling Interaction (Buttons/Selects)
+For cards with multiple versions (like One Piece SR/L Parallel), `run_openclaw` may return a `need_selection` status. You should use `discord.ui.View` with buttons or select menus to let the user choose the correct version slug before generating the final report.
+
+## �🔑 Environment Variables
 - `DISCORD_BOT_TOKEN`: Required for Discord integration.
-- `MINIMAX_API_KEY`: Priority vision model for Precise recognition.
+- `MINIMAX_API_KEY`: Priority vision model for precise recognition.
 - `OPENAI_API_KEY`: Fallback vision model and report refinement.
