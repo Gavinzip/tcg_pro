@@ -17,14 +17,31 @@ tcg_pro copy/
 
 ## 🚀 Usage Modes
 
-OpenClaw supports two primary operational modes via `run_openclaw(image_path, mode, lang)`:
+OpenClaw supports two entry flows via `run_openclaw(image_path=None, mode="json", card_info=None)`:
 
-### 1. JSON Recognition Mode (`mode="json"`)
-Quickly identify a card and extract its metadata.
-- **Native Mode**: Fallback if no API Keys are present.
-- **LLM Mode**: Precise field extraction using `MINIMAX_API_KEY` or `OPENAI_API_KEY`.
+### Flow A: External Recognition (Agent Data)
+AI Agent already has the card JSON. Skip internal vision and generate report directly.
+```python
+# Pass card_info JSON directly
+result = await run_openclaw(mode="full", card_info={
+    "name": "Pikachu V",
+    "number": "005/015",
+    "set_code": "PROMO",
+    "grade": "Common"
+})
+```
 
-**Example Output Schema:**
+### Flow B: Internal Recognition (Image Path)
+Pass an image path; OpenClaw handles vision (Native or LLM) + report.
+```python
+# Pass image_path
+result = await run_openclaw(image_path="card.jpg", mode="full")
+```
+
+## 📊 Technical Specifications
+
+### Card Metadata Schema (`card_info`)
+Whether extracted by an agent or OpenClaw, the card metadata should follow this schema:
 ```json
 {
   "name": "Venusaur ex",
@@ -33,15 +50,16 @@ Quickly identify a card and extract its metadata.
   "grade": "PSA 10",
   "category": "Pokemon",
   "is_alt_art": false,
-  "market_heat": "High...",
-  "collection_value": "Medium...",
-  "features": "Full art, holo...",
+  "market_heat": "High",
+  "collection_value": "Medium",
+  "features": "Full art, holo",
   "illustrator": "Mitsuhiro Arita"
 }
 ```
 
-### 2. Full Market Report (`mode="full"`)
-Generates a comprehensive analysis. **Requires LLM API keys.**
+### Operation Modes
+1. **`mode="json"`**: Returns the `card_info` JSON.
+2. **`mode="full"`**: Returns `report_text` + `poster_data`. **Requires LLM Keys if internal vision is used.**
 
 **Return Structure:**
 - `report_text`: A detailed Markdown analysis.

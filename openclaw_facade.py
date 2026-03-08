@@ -10,62 +10,69 @@ import traceback
 sys.path.append(os.path.join(os.path.dirname(__file__), "scripts"))
 import market_report_vision as mrv
 
-async def run_openclaw(image_path, mode="json", lang="zh", debug_dir=None):
+async def run_openclaw(image_path=None, mode="json", lang="zh", debug_dir=None, card_info=None):
     """
-    OpenClaw 核心門面函數
-    模式一 (Native): 當環境變數缺少 API Key 時，使用系統內建辨識 (目前為 Mock/佔位)。
-    模式二 (LLM): 當環境變數有 API Key 時，自動啟用 OpenAI/MiniMax 高階辨識。
+    OpenClaw 核心門面函數 (Facade)
+    
+    支援兩條路徑：
+    A. 外部辨識 (External): 由 AI 代理傳入 card_info (JSON)，跳過內部辨識。
+    B. 內部辨識 (Internal): 傳入 image_path，腳本自動調用 Native 或 LLM 辨識。
     """
-    if not os.path.exists(image_path):
-        return {"error": f"找不到圖片: {image_path}"}
-
     if debug_dir:
         mrv._set_debug_dir(debug_dir)
 
     api_key = os.getenv("MINIMAX_API_KEY") or os.getenv("OPENAI_API_KEY")
-    
-    # 影像辨識邏輯選擇
-    is_llm_mode = api_key is not None
-    vision_mode_str = "LLM (OpenAI/MiniMax)" if is_llm_mode else "Native (OpenClaw)"
-    print(f"📡 [OpenClaw] 辨識模式: {vision_mode_str}")
+    current_card_info = None
 
+    # --- 階段 1: 取得卡片資訊 (Recognition Phase) ---
+    if card_info:
+        print(f"📡 [OpenClaw] 使用外部傳入的 JSON 資訊，跳過視覺辨識。")
+        current_card_info = card_info
+    else:
+        if not image_path or not os.path.exists(image_path):
+            return {"error": f"找不到圖片或未提供 card_info: {image_path}"}
+            
+        is_llm_mode = api_key is not None
+        vision_mode_str = "LLM (OpenAI/MiniMax)" if is_llm_mode else "Native (OpenClaw)"
+        print(f"📡 [OpenClaw] 辨識模式: {vision_mode_str}")
+
+        if is_llm_mode:
+            print(f"🔍 [OpenClaw] 執行 LLM 辨識 | 處理圖片: {os.path.basename(image_path)}")
+            res = await mrv.process_image_for_candidates(image_path, api_key, lang=lang)
+            if res and len(res) >= 1:
+                current_card_info = res[0]
+            else:
+                return {"error": "LLM 辨識失敗"}
+        else:
+            # Native Mode 佔位邏輯
+            print(f"🔍 [OpenClaw] 執行 Native 辨識 | 處理圖片: {os.path.basename(image_path)}")
+            current_card_info = {
+                "name": os.path.basename(image_path).split('.')[0], # 直接從檔名猜
+                "number": "Unknown",
+                "set_code": "",
+                "grade": "Common",
+                "note": "使用 Native 模式 (未偵測到 API Key)"
+            }
+
+    # 儲存到 debug 資料夾 (如有)
+    if debug_dir and current_card_info:
+        mrv._debug_save("openclaw_meta.json", json.dumps(current_card_info, indent=2, ensure_ascii=False))
+
+    # --- 階段 2: 執行後續流程 ---
     try:
         if mode == "json":
-            # 模式一：純影像辨識與欄位提取
-            print(f"🔍 [OpenClaw] 執行 JSON 辨識 | 處理圖片: {os.path.basename(image_path)}")
-            
-            if is_llm_mode:
-                res = await mrv.process_image_for_candidates(image_path, api_key, lang=lang)
-                if res and len(res) >= 1:
-                    card_info = res[0]
-                else:
-                    return {"error": "LLM 辨識失敗"}
-            else:
-                # Native Mode 佔位邏輯
-                card_info = {
-                    "name": os.path.basename(image_path).split('.')[0], # 直接從檔名猜
-                    "number": "Unknown",
-                    "set_code": "",
-                    "grade": "Common",
-                    "note": "使用 Native 模式 (未偵測到 API Key)，請手動確認資訊或補上 API Key"
-                }
-            
-            # 儲存到 debug 資料夾 (如有)
-            if debug_dir:
-                mrv._debug_save("openclaw_meta.json", json.dumps(card_info, indent=2, ensure_ascii=False))
-            return card_info
+            return current_card_info
 
         elif mode == "full":
             # 模式二：完整市場行情分析報告
-            print(f"📊 [OpenClaw] 執行 FULL 報告 | 處理圖片: {os.path.basename(image_path)}")
+            print(f"📊 [OpenClaw] 執行 FULL 報告流程 | 語言: {lang}")
             
-            if not is_llm_mode:
-                 return {"error": "FULL 模式 (行情分析) 目前必須使用 LLM 辨識以確保準確度，請設置 API Key。"}
-
+            # FULL 模式即使有外部 card_info，如果需要高品質分析仍建議有 API Key (用於描述潤色)
+            # 但我們允許在有 card_info 的情況下繼續執行爬蟲
             mrv.REPORT_ONLY = True
             
             result = await mrv.process_single_image(
-                image_path, api_key, out_dir=debug_dir, stream_mode=True, lang=lang
+                image_path, api_key, out_dir=debug_dir, stream_mode=True, lang=lang, external_card_info=current_card_info
             )
             
             if isinstance(result, tuple):
