@@ -8,7 +8,7 @@ OpenClaw is a powerful TCG intelligence engine designed for collectors and playe
 tcg_pro copy/
 ├── openclaw_facade.py      # Main entry point (Facade)
 ├── SKILL.md                # This documentation
-└── 腳本/                   # Core logic and assets
+└── scripts/                # Core logic and assets
     ├── fonts/              # Typography assets
     ├── templates/          # HTML report templates
     ├── market_report_vision.py # Market analysis engine

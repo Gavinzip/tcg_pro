@@ -6,8 +6,8 @@ import json
 import argparse
 import traceback
 
-# 將 腳本 目錄加入路徑，讓它可以載入內部的 market_report_vision
-sys.path.append(os.path.join(os.path.dirname(__file__), "腳本"))
+# 將 scripts 目錄加入路徑，讓它可以載入內部的 market_report_vision
+sys.path.append(os.path.join(os.path.dirname(__file__), "scripts"))
 import market_report_vision as mrv
 
 async def run_openclaw(image_path, mode="json", lang="zh", debug_dir=None):
