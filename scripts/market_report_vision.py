@@ -170,6 +170,69 @@ def fetch_jina_markdown(target_url):
             
     return ""
 
+def _create_snkr_api_session():
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://snkrdunk.com/",
+        "Origin": "https://snkrdunk.com",
+        "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+    })
+    # Warm up cookies to reduce 403 on direct API endpoints.
+    try:
+        session.get("https://snkrdunk.com/", timeout=20)
+    except Exception as e:
+        _debug_log(f"SNKRDUNK API warmup failed (will continue): {e}")
+    return session
+
+def _snkr_api_get_json(session, url, retries=3):
+    last_error = None
+    for attempt in range(retries):
+        try:
+            resp = session.get(url, timeout=20)
+            if resp.status_code == 403:
+                # Re-warm homepage cookies and retry.
+                session.get("https://snkrdunk.com/", timeout=20)
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            last_error = e
+            time.sleep(0.5 * (attempt + 1))
+    _debug_log(f"SNKRDUNK API request failed after retries: {url} | err={last_error}")
+    return {}
+
+def _snkr_history_to_jpy(history, jpy_rate):
+    price = history.get("price", 0)
+    price_fmt = str(history.get("priceFormat", ""))
+    try:
+        p = float(price)
+    except Exception:
+        return 0
+
+    if p <= 0:
+        return 0
+
+    fmt_upper = price_fmt.upper()
+    if "¥" in price_fmt or "JPY" in fmt_upper:
+        return int(round(p))
+    if "$" in price_fmt or "USD" in fmt_upper:
+        return int(round(p * jpy_rate))
+
+    # Fallback heuristic when currency symbol is missing.
+    if p >= 1000:
+        return int(round(p))
+    return int(round(p * jpy_rate))
+
+def _snkr_traded_date(traded_at):
+    if not traded_at:
+        return ""
+    if "T" in traded_at:
+        traded_at = traded_at.split("T", 1)[0]
+    return traded_at.replace("-", "/")
+
 def get_exchange_rate():
     try:
         resp = requests.get("https://open.er-api.com/v6/latest/USD")
@@ -588,25 +651,41 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
     _debug_log(f"SNKRDUNK: 共 {len(terms_to_try)} 種查詢方案: {terms_to_try}")
 
     product_id = None
+    img_url = ""
     snkr_step = 0
+    snkr_session = _create_snkr_api_session()
 
     for term in terms_to_try:
         snkr_step += 1
         q = urllib.parse.quote_plus(term)
-        search_url = f"https://snkrdunk.com/search?keywords={q}"
+        search_url = f"https://snkrdunk.com/en/v1/search?keyword={q}&perPage=40&page=1"
         _debug_log(f"SNKRDUNK Step {snkr_step}: 查詢={term!r}  URL={search_url}")
-        md_content = fetch_jina_markdown(search_url)
-        
-        matches = re.findall(r'\[(.*?)\]\([^\)]*?/apparels/(\d+)[^\)]*?\)', md_content)
-        raw_result_urls = [f"https://snkrdunk.com/apparels/{pid}" for _, pid in matches]
-        _debug_log(f"SNKRDUNK Step {snkr_step}: 頁面原始匹配 {len(matches)} 筆")
-        
+        data = _snkr_api_get_json(snkr_session, search_url)
+
+        items = []
+        for key in ("streetwears", "products"):
+            arr = data.get(key, [])
+            if isinstance(arr, list):
+                items.extend(arr)
+
+        _debug_log(f"SNKRDUNK Step {snkr_step}: API 原始匹配 {len(items)} 筆")
+
         seen = set()
         unique_matches = []
-        for title, pid in matches:
+        for item in items:
+            pid = str(item.get("id", "")).strip()
+            if not pid:
+                continue
+            title = str(item.get("name", "")).strip()
+            if not title:
+                continue
+            # Keep only trading cards when the flag exists.
+            if item.get("isTradingCard") is False:
+                continue
+            thumb = item.get("thumbnailUrl") or item.get("imageUrl") or item.get("image") or ""
             if pid not in seen:
                 seen.add(pid)
-                unique_matches.append((title, pid))
+                unique_matches.append((title, pid, thumb))
 
         if not unique_matches:
             _debug_step("SNKRDUNK", snkr_step, term, search_url,
@@ -616,7 +695,7 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
                 
         filtered_by_number = []
         skipped = []
-        for title, pid in unique_matches:
+        for title, pid, thumb in unique_matches:
             # Drop Jina image prefixes
             title_clean = re.sub(r'(?i)image\s*\d+:\s*', '', title).lower()
             # Drop all https CDN links to prevent their timestamp digits from matching the card number
@@ -624,16 +703,16 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
             
             # SNKRDUNK always pads Pokemon/One Piece numbers to at least 3 digits
             if number_padded in title_clean or f"{number_clean}/" in title_clean:
-                filtered_by_number.append((title, pid))
+                filtered_by_number.append((title, pid, thumb))
                 _debug_log(f"  ✅ 符合編號 '{number_padded}': [{pid}] {title}")
             else:
-                skipped.append((title, pid))
+                skipped.append((title, pid, thumb))
                 _debug_log(f"  ❌ 不含編號 '{number_padded}': [{pid}] {title}")
                 
         if not filtered_by_number:
             _debug_step("SNKRDUNK", snkr_step, term, search_url,
                         "NO_MATCH",
-                        candidate_urls=[f"https://snkrdunk.com/apparels/{pid} — {t}" for t, pid in unique_matches],
+                        candidate_urls=[f"https://snkrdunk.com/apparels/{pid} — {t}" for t, pid, _ in unique_matches],
                         reason=f"找到 {len(unique_matches)} 筆商品但均不含卡片編號 '{number_padded}'，嘗試下一個查詢")
             time.sleep(1)
             continue # If no titles specifically have the card number, do not guess
@@ -643,9 +722,10 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
         if unique_matches:
             if return_candidates:
                 # 只回傳 URL 列表 (加上標題方便 bot 顯示列表)
-                return [f"https://snkrdunk.com/apparels/{pid} — {title}" for title, pid in unique_matches], None, None
+                return [f"https://snkrdunk.com/apparels/{pid} — {title}" for title, pid, _ in unique_matches], None, None
                 
             product_id = unique_matches[0][1] # default to first result
+            img_url = unique_matches[0][2]
             selection_reason = "Default (First match)"
             
             # ─────────────────────────────────────────────────────────────────
@@ -659,7 +739,7 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
             # 例: ["l-p"] for Leader Parallel, ["sr-p"] for SR Parallel, ["コミパラ"] for Manga, ["フラッグシップ","フラシ"] for Flagship
             _variant_kws = snkr_variant_kws or []
             
-            stage1_candidates = [(t, p) for t, p in unique_matches
+            stage1_candidates = [(t, p, i) for t, p, i in unique_matches
                                  if any(kw in t.lower() for kw in _variant_kws)] if _variant_kws else []
             if stage1_candidates:
                 _debug_log(f"  🎯 Variant Filter ({_variant_kws}) 命中 {len(stage1_candidates)} 筆")
@@ -674,28 +754,32 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
             
             # ── Stage 3: Language filter ───────────────────────────────────
             if card_language == "EN":
-                stage3 = [(t, p) for t, p in working_set2
+                stage3 = [(t, p, i) for t, p, i in working_set2
                           if any(m in t.lower() for m in en_markers)]
                 if stage3:
                     product_id = stage3[0][1]
+                    img_url = stage3[0][2]
                     selection_reason += " + Language(EN)"
                     _debug_log(f"  🌐 語言過濾選中英文版: [{product_id}]")
                 else:
                     product_id = working_set2[0][1]
+                    img_url = working_set2[0][2]
             else:  # JP (default)
-                stage3 = [(t, p) for t, p in working_set2
+                stage3 = [(t, p, i) for t, p, i in working_set2
                           if not any(m in t.lower() for m in en_markers)]
                 if stage3:
                     product_id = stage3[0][1]
+                    img_url = stage3[0][2]
                     selection_reason += " + Language(JP)"
                     _debug_log(f"  🌐 語言過濾選中日文版: [{product_id}]")
                 else:
                     product_id = working_set2[0][1]
+                    img_url = working_set2[0][2]
                     _debug_log(f"  🌐 語言過濾: 未找到日文版，使用 working_set2 首筆")
 
             _debug_step("SNKRDUNK", snkr_step, term, search_url,
             "OK",
-            candidate_urls=[f"https://snkrdunk.com/apparels/{pid} — {t}" for t, pid in unique_matches],
+            candidate_urls=[f"https://snkrdunk.com/apparels/{pid} — {t}" for t, pid, _ in unique_matches],
             selected_url=f"https://snkrdunk.com/apparels/{product_id}",
             reason=selection_reason,
             extra={"number_padded": number_padded, "is_alt_art": is_alt_art})
@@ -707,47 +791,26 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
         return None, None, None
         
     print(f"Found SNKRDUNK Product ID: {product_id}")
-    
-    sales_url = f"https://snkrdunk.com/apparels/{product_id}/sales-histories"
-    sales_md = fetch_jina_markdown(sales_url)
-    
-    img_match = re.search(r'!\[.*?\]\((https://cdn.snkrdunk.com/.*?)\)', sales_md)
-    img_url = img_match.group(1) if img_match else ""
-    
+
+    jpy_rate = get_exchange_rate()
+    hist_url = f"https://snkrdunk.com/en/v1/streetwears/{product_id}/trading-histories?perPage=100&page=1"
+    hist_data = _snkr_api_get_json(snkr_session, hist_url)
+    histories = hist_data.get("histories", []) if isinstance(hist_data, dict) else []
+
     records = []
-    lines = sales_md.split('\n')
-    date_regex = r'^(\d{4}/\d{2}/\d{2}|\d+\s*(分|時間|日)前|\d+\s+(minute|hour|day)s?\s+ago)$'
-    
-    for i in range(len(lines)):
-        line_clean = lines[i].strip()
-        
-        if re.match(date_regex, line_clean, re.IGNORECASE):
-            date_found = line_clean
-            grade_found = ""
-            price_jpy = 0
-            
-            for j in range(i+1, min(i+10, len(lines))):
-                l_j = lines[j].strip()
-                if not l_j:
-                    continue
-                
-                if not grade_found and not re.search(r'^\d', l_j.replace(',', '')):
-                    grade_found = l_j
-                    continue
-                    
-                if grade_found and re.search(r'^\d{1,3}(,\d{3})*$', l_j):
-                    price_jpy = extract_price(l_j)
-                    break
-                    
-            if grade_found and price_jpy > 0:
-                # 不過濾等級，直接收集所有成交紀錄（含實際等級）
-                # generate_report 的顯示邏輯會按需選取正確等級
-                # 航海王 BGS 卡需要同時看到 A/PSA10/BGS 等紀錄
-                records.append({
-                    "date": date_found,
-                    "price": price_jpy,
-                    "grade": grade_found  # 保留頁面上的實際等級字串
-                })
+    for h in histories:
+        date_found = _snkr_traded_date(h.get("tradedAt", ""))
+        grade_found = str(h.get("condition", "")).strip() or "Unknown"
+        price_jpy = _snkr_history_to_jpy(h, jpy_rate)
+        if date_found and price_jpy > 0:
+            # 不過濾等級，直接收集所有成交紀錄（含實際等級）
+            # generate_report 的顯示邏輯會按需選取正確等級
+            # 航海王 BGS 卡需要同時看到 A/PSA10/BGS 等紀錄
+            records.append({
+                "date": date_found,
+                "price": price_jpy,
+                "grade": grade_found
+            })
                 
     resolved_url = f"https://snkrdunk.com/apparels/{product_id}" if product_id else None
                 
@@ -1370,46 +1433,29 @@ async def process_image_for_candidates(image_path, api_key, lang="zh"):
     }
 
 def _fetch_snkr_prices_from_url_direct(product_url):
-    sales_url = f"{product_url}/sales-histories"
-    sales_md = fetch_jina_markdown(sales_url)
-    
-    img_match = re.search(r'!\[.*?\]\((https://cdn.snkrdunk.com/.*?)\)', sales_md)
-    img_url = img_match.group(1) if img_match else ""
-    
+    product_id_match = re.search(r'apparels/(\d+)', product_url)
+    product_id = product_id_match.group(1) if product_id_match else None
+    img_url = ""
     records = []
-    lines = sales_md.split('\n')
-    date_regex = r'^(\d{4}/\d{2}/\d{2}|\d+\s*(分|時間|日)前|\d+\s+(minute|hour|day)s?\s+ago)$'
-    
-    for i in range(len(lines)):
-        line_clean = lines[i].strip()
-        
-        if re.match(date_regex, line_clean, re.IGNORECASE):
-            date_found = line_clean
-            grade_found = ""
-            price_jpy = 0
-            
-            for j in range(i+1, min(i+10, len(lines))):
-                l_j = lines[j].strip()
-                if not l_j:
-                    continue
-                
-                if not grade_found and not re.search(r'^\d', l_j.replace(',', '')):
-                    grade_found = l_j
-                    continue
-                    
-                if grade_found and re.search(r'^\d{1,3}(,\d{3})*$', l_j):
-                    # 移除非數字字元提取價格
-                    digits = re.sub(r'[^\d]', '', l_j)
-                    if digits:
-                        price_jpy = int(digits)
-                    break
-                    
-            if date_found and grade_found and price_jpy:
-                records.append({
-                    "date": date_found,
-                    "price": price_jpy,
-                    "grade": grade_found
-                })
+    if not product_id:
+        return records, img_url
+
+    session = _create_snkr_api_session()
+    jpy_rate = get_exchange_rate()
+    hist_url = f"https://snkrdunk.com/en/v1/streetwears/{product_id}/trading-histories?perPage=100&page=1"
+    hist_data = _snkr_api_get_json(session, hist_url)
+    histories = hist_data.get("histories", []) if isinstance(hist_data, dict) else []
+
+    for h in histories:
+        date_found = _snkr_traded_date(h.get("tradedAt", ""))
+        grade_found = str(h.get("condition", "")).strip() or "Unknown"
+        price_jpy = _snkr_history_to_jpy(h, jpy_rate)
+        if date_found and grade_found and price_jpy:
+            records.append({
+                "date": date_found,
+                "price": price_jpy,
+                "grade": grade_found
+            })
     
     return records, img_url
 
