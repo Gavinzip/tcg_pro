@@ -71,12 +71,22 @@ async def run_openclaw(image_path=None, mode="json", lang="zh", debug_dir=None, 
             # 但我們允許在有 card_info 的情況下繼續執行爬蟲
             mrv.REPORT_ONLY = True
             
+            # 將 stream_mode 改為 False，強制產生海報圖片
             result = await mrv.process_single_image(
-                image_path, api_key, out_dir=debug_dir, stream_mode=True, lang=lang, external_card_info=current_card_info
+                image_path, api_key, out_dir=debug_dir, stream_mode=False, lang=lang, external_card_info=current_card_info
             )
             
             if isinstance(result, tuple):
-                report_text, poster_data = result
+                report_text, out_paths = result
+                
+                # out_paths 是由 image_generator 回傳的 [profile_path, data_path]
+                poster_data = {}
+                if isinstance(out_paths, list):
+                    poster_data["profile"] = str(out_paths[0]) if len(out_paths) > 0 else ""
+                    poster_data["market"] = str(out_paths[1]) if len(out_paths) > 1 else ""
+                else:
+                    poster_data = out_paths
+
                 return {
                     "report_text": report_text,
                     "poster_data": poster_data,

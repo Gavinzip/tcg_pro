@@ -59,12 +59,15 @@ python3 openclaw_facade.py --mode full --json '{"name": "Mewtwo", "number": "150
 
 ---
 
-## � Flow B: For Simple Bots (Image-to-Market)
-If you just want OpenClaw to handle everything (Vision + Report):
-```python
-from openclaw_facade import run_openclaw
-result = await run_openclaw(image_path="card.jpg", mode="full")
+## 🤖 Flow B: Auto-Vision (Agent Provides Image, Script Does the Rest)
+If you prefer not to write JSON manually, or if you want the script's built-in LLM to analyze the image, you can simply pass the image path directly to the script. The script will automatically parse the image, generate the markdown report, and build the posters.
+
+**CLI Command:**
+```bash
+python3 openclaw_facade.py "path/to/downloaded/image.jpg" --mode full
 ```
+
+*Note: This flow requires `MINIMAX_API_KEY` or `OPENAI_API_KEY` to be set in the `.env` file to function properly.*
 
 ---
 
@@ -76,12 +79,38 @@ To get 100% accurate market data, agents should pay attention to these fields:
 
 ---
 
-## 👾 Discord Interaction Protocol
-1. **Isolate**: Always reply to the user by creating a **Thread**.
-2. **Execute**: Run `run_openclaw` inside that thread.
-3. **Report**: Post the Markdown analysis + the two generated posters (`poster_profile.png` & `poster_market.png`) back into the thread.
+## 👾 Discord Interaction Protocol (CRITICAL FOR UI AGENTS)
+When you receive a user's request with an image in Discord, you **MUST** follow these 3 steps exactly.
 
----
+**1. Isolate (Create Thread):**
+You MUST NOT reply with the report in the main channel. You MUST use your thread-creation action/tool to create a new thread for the user's request.
+
+**2. Execute (Run openclaw):**
+You MUST execute `openclaw_facade.py` in FULL mode. You have TWO ways to do this, choose ONE based on your capabilities:
+
+- **Flow A (External JSON)**: If you extract the card info yourself, run:
+  `python3 openclaw_facade.py --mode full --json '{"name": "...", "number": "...", "set_code": "...", "grade": "..."}'`
+
+- **Flow B (Image Pass-through)**: If you want the script's native vision to do the work, download the image and pass it:
+  `python3 openclaw_facade.py "path/to/downloaded/image.jpg" --mode full`
+
+**Important Note:** The script will always output a JSON containing the textual report AND the absolute paths to the generated poster images. It looks exactly like this:
+```json
+{
+  "report_text": "Markdown string of the market report...",
+  "poster_data": {
+    "profile": "/path/to/report_xxx_profile.png",
+    "market": "/path/to/report_xxx_data.png"
+  },
+  "status": "success"
+}
+```
+
+**3. Report (Post in Thread):**
+You MUST read the output JSON from the script. Then, send a new message in the created thread where:
+- The **message text** is exactly the string found in `"report_text"`.
+- You **MUST upload BOTH image files** listed under `"poster_data"` (`profile` and `market` paths). Do not assume the files don't exist; wait for them and USE YOUR LOCAL SYSTEM TOOLS to read and attach those two absolute file paths!
+If you forget to upload the posters, the user will be very disappointed.
 
 ## 📁 Directory Structure
 - `openclaw_facade.py`: The single entry point (Supports `--json` discovery).
