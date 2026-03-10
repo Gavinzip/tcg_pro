@@ -88,6 +88,42 @@ To get 100% accurate market data, agents should pay attention to these fields:
 ## 👾 Discord Interaction Protocol (CRITICAL FOR UI AGENTS)
 When you receive a user's request with an image in Discord, you **MUST** follow these 3 steps exactly.
 
+### 🚨 Transport Rule (Must Follow in This Environment)
+For thread messaging, always use `action="send"` with `channelId=<thread_id>`.
+
+**Correct (send text to thread):**
+```python
+message(
+  action="send",
+  channel="discord",
+  channelId="1480914216608071832",
+  message="訊息內容"
+)
+```
+
+**Correct (send image to thread):**
+```python
+message(
+  action="send",
+  channel="discord",
+  channelId="1480914216608071832",
+  message="圖片說明",
+  filePath="~/clawd/圖片.png"
+)
+```
+
+**Wrong (do not use):**
+```python
+message(
+  action="thread-reply",
+  target="主頻道ID",
+  threadId="ThreadID"
+)
+```
+
+`thread-reply` with `target` routes to the parent channel in this setup and may not deliver inside the thread.  
+After creating the thread, always store that thread ID and reuse it as `channelId` for both text and image sends.
+
 **1. Isolate (Create Thread):**
 You MUST NOT reply with the report in the main channel. You MUST use your thread-creation action/tool to create a new thread for the user's request.
 

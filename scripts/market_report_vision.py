@@ -394,6 +394,22 @@ def extract_price(price_str):
     except:
         return 0.0
 
+def filter_pricecharting_candidates(candidates):
+    """Normalize and dedupe PriceCharting candidate strings."""
+    seen = set()
+    filtered = []
+    for c in candidates or []:
+        if not c:
+            continue
+        url = str(c).split(" — ", 1)[0].strip()
+        if not url.startswith("https://www.pricecharting.com/game/"):
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+        filtered.append(c)
+    return filtered
+
 def search_pricecharting(name, number, set_code, target_grade, is_alt_art, category="Pokemon", is_flagship=False, return_candidates=False, set_name=""):
     # Basic Name cleaning (strip parentheses like "Queen (Flagship Battle Top 8 Prize)")
     name_query = re.sub(r'\(.*?\)', '', name).strip()
