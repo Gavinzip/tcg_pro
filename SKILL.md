@@ -145,6 +145,28 @@ After creating the thread, always store that thread ID and reuse it as `channelI
 **1. Isolate (Create Thread):**
 You MUST NOT reply with the report in the main channel. You MUST use your thread-creation action/tool to create a new thread for the user's request.
 
+For `message(action="thread-create", ...)`, the parameter name is **`threadName`** (not `name`).
+
+**Correct:**
+```python
+message(
+  action="thread-create",
+  channel="discord",
+  guildId="1469685526427734181",
+  threadName="Gastly SV2a 市場報告"
+)
+```
+
+**Wrong:**
+```python
+message(
+  action="thread-create",
+  channel="discord",
+  guildId="1469685526427734181",
+  name="Gastly SV2a 市場報告"
+)
+```
+
 **2. Execute (Run openclaw):**
 You MUST execute `openclaw_facade.py` in FULL mode. You have TWO ways to do this, choose ONE based on your capabilities:
 
