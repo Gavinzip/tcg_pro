@@ -11,6 +11,7 @@ import os
 import base64
 import threading
 import tempfile
+import image_generator
 from collections import deque
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -1056,64 +1057,73 @@ def main():
                                          debug_session_root=debug_session_root, 
                                          batch_index=idx))
 
-async def process_single_image(image_path, api_key, out_dir=None, debug_session_root=None, batch_index=1):
-    if not os.path.exists(image_path):
+async def process_single_image(
+    image_path,
+    api_key,
+    out_dir=None,
+    stream_mode=False,
+    lang="zh",
+    debug_session_root=None,
+    batch_index=1,
+    external_card_info=None,
+):
+    if not external_card_info and (not image_path or not os.path.exists(image_path)):
         print(f"❌ Error: 找不到圖片檔案 -> {image_path}", force=True)
         return
-    
+
     # Setup per-image debug directory if root is provided
     if debug_session_root:
-        img_stem = re.sub(r'[^A-Za-z0-9]', '_', os.path.splitext(os.path.basename(image_path))[0])[:40]
+        if image_path:
+            stem_source = os.path.splitext(os.path.basename(image_path))[0]
+        else:
+            stem_source = f"{external_card_info.get('name', 'external')}_{external_card_info.get('number', '0')}"
+        img_stem = re.sub(r'[^A-Za-z0-9]', '_', stem_source)[:40]
         per_image_dir = os.path.join(debug_session_root, f"{batch_index:02d}_{img_stem}")
         os.makedirs(per_image_dir, exist_ok=True)
         _set_debug_dir(per_image_dir)
         print(f"🔍 Debug 子資料夾: {per_image_dir}")
-        
-    # 第一階段：透過大模型辨識圖片資訊（GPT-4o-mini 優先，Minimax 備援）
-    _notify_msgs_var.set([])  # 初始化本次分析的 Discord 通知佇列
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if openai_key:
-        card_info = await analyze_image_with_openai(image_path, openai_key)
-        if not card_info:
-            _push_notify("⚠️ GPT-4o-mini 無回應，切換至 Minimax 備援重試...")
-            print("⚠️ GPT-4o-mini 辨識失敗，切換至 Minimax...")
-            card_info = await analyze_image_with_minimax(image_path, api_key)
-    else:
-        print("⚠️ 未設定 OPENAI_API_KEY，直接使用 Minimax 辨識。")
-        card_info = await analyze_image_with_minimax(image_path, api_key)
 
-    if not card_info:
-        if not openai_key:
-            err_msg = "❌ 卡片辨識失敗：未設定 OPENAI_API_KEY，且 Minimax API 亦無回應。請聯繫管理員設定 OpenAI 金鑰。"
+    _notify_msgs_var.set([])
+
+    # 第一階段：取得卡片資訊（外部 JSON 或視覺辨識）
+    if external_card_info:
+        card_info = external_card_info
+        print("📡 使用外部 card_info，跳過影像辨識。")
+    else:
+        openai_key = os.getenv("OPENAI_API_KEY")
+        if openai_key:
+            card_info = await analyze_image_with_openai(image_path, openai_key, lang=lang)
+            if not card_info:
+                _push_notify("⚠️ GPT-4o-mini 無回應，切換至 Minimax 備援重試...")
+                print("⚠️ GPT-4o-mini 辨識失敗，切換至 Minimax...")
+                card_info = await analyze_image_with_minimax(image_path, api_key, lang=lang)
         else:
-            err_msg = "❌ 卡片影像辨識失敗：GPT-4o-mini 及 Minimax 備援均無法解析此圖片，請確認圖片清晰度並重試。"
-        print(err_msg, force=True)
-        return err_msg
-    
+            print("⚠️ 未設定 OPENAI_API_KEY，直接使用 Minimax 辨識。")
+            card_info = await analyze_image_with_minimax(image_path, api_key, lang=lang)
+
+        if not card_info:
+            if not openai_key:
+                err_msg = "❌ 卡片辨識失敗：未設定 OPENAI_API_KEY，且 Minimax API 亦無回應。請聯繫管理員設定 OpenAI 金鑰。"
+            else:
+                err_msg = "❌ 卡片影像辨識失敗：GPT-4o-mini 及 Minimax 備援均無法解析此圖片，請確認圖片清晰度並重試。"
+            print(err_msg, force=True)
+            return err_msg
+
     # 從 AI 回傳的 JSON 提取必備資訊
     name = card_info.get("name", "Unknown")
     set_code = card_info.get("set_code", "")
     jp_name = card_info.get("jp_name", "")
-    c_name = card_info.get("c_name", "")
     number = str(card_info.get("number", "0"))
     grade = card_info.get("grade", "Ungraded")
     category = card_info.get("category", "Pokemon")
-    release_info = card_info.get("release_info", "Unknown")
-    illustrator = card_info.get("illustrator", "Unknown")
-    market_heat = card_info.get("market_heat", "Unknown")
     features = card_info.get("features", "Unknown")
-    collection_value = card_info.get("collection_value", "Unknown")
-    competitive_freq = card_info.get("competitive_freq", "Unknown")
     is_alt_art = card_info.get("is_alt_art", False)
     if isinstance(is_alt_art, str):
         is_alt_art = is_alt_art.lower() == "true"
-        
-    # 將原始 AI 分析結果存入 Debug 資料夾
+
     _debug_save("step1_meta.json", json.dumps(card_info, ensure_ascii=False, indent=2))
-    
-    # ── features-based override (最高優先級) ──────────────────────────────
-    # features 欄位包含 AI 的詳細描述，比 is_alt_art 布林值更可靠。
-    # 若 features 明確提及旗艦賽或異圖關鍵字，以此為準覆蓋 is_alt_art。
+
+    # ── features-based override ──────────────────────────────────────────────
     features_lower = features.lower() if features else ""
     is_flagship = any(kw in features_lower for kw in ["flagship", "旗艦賽", "flagship battle"])
     if any(kw in features_lower for kw in [
@@ -1121,23 +1131,22 @@ async def process_single_image(image_path, api_key, out_dir=None, debug_session_
         "リーダーパラレル", "コミパラ", "パラレル",
         "alternate art", "parallel art", "manga"
     ]):
-        is_alt_art = True  # features 読到明確異圖關鍵字→強制覆寫
-        _debug_log(f"✨ features-based override: is_alt_art=True (從 features 偵測到異圖關鍵字)")
+        is_alt_art = True
+        _debug_log("✨ features-based override: is_alt_art=True (從 features 偵測到異圖關鍵字)")
     if is_flagship:
-        is_alt_art = True  # Flagship 也是一種特殊版本
-        _debug_log(f"✨ features-based override: is_flagship=True (從 features 偵測到旗艦賽關鍵字)")
-    # ────────────────────────────────────────────────────────────
-    # ── Detect card language from features (航海王語言判定) ──
+        is_alt_art = True
+        _debug_log("✨ features-based override: is_flagship=True (從 features 偵測到旗艦賽關鍵字)")
+
+    # ── Detect card language and variant hints for SNKRDUNK ──
     is_one_piece_cat = (category.lower() == "one piece")
-    card_language = "JP"  # Default for One Piece: Japanese
+    card_language = "JP"
     if is_one_piece_cat:
         if any(kw in features_lower for kw in ["英文版", "english version", "[en]"]):
             card_language = "EN"
-            _debug_log(f"🌐 Language detected: EN (從 features 偵測到英文版)")
+            _debug_log("🌐 Language detected: EN (從 features 偵測到英文版)")
         else:
-            _debug_log(f"🌐 Language detected: JP (預設日文版)")
-    # ── Detect specific card variant for SNKRDUNK precision filter ──
-    # 優先順序：Flagship > SR-P > L-P > Manga/コミパラ > 通用 Alt-Art
+            _debug_log("🌐 Language detected: JP (預設日文版)")
+
     snkr_variant_kws = []
     if is_one_piece_cat and is_alt_art:
         if is_flagship:
@@ -1155,81 +1164,92 @@ async def process_single_image(image_path, api_key, out_dir=None, debug_session_
         elif any(kw in features_lower for kw in ["パラレル", "sr parallel", "parallel art"]):
             snkr_variant_kws = ["パラレル", "-p"]
             _debug_log(f"🎯 SNKR Variant: General Parallel ({snkr_variant_kws})")
-    # ─────────────────────────────────────────────────────────────
-    # ⚠️ 並發關鍵：search_pricecharting 和 search_snkrdunk 都是同步阻塞函數，
-    # 用 run_in_executor 把它們丟到 thread pool，再用 asyncio.gather 同時等待兩者完成。
-    # 等待期間 event loop 不被 block，其他用戶的 Task 可以開始跑 Minimax 分析。
-    #
-    # Rate Limiter 安全說明：
-    # fetch_jina_markdown 內的 _jina_lock (threading.Lock) + _jina_requests_queue 是
-    # module-level 全域變數，所有 thread 共用同一份，thread-safe 排隊機制依然完整生效。
+
+    # 第二階段：抓取市場資料
     print("--------------------------------------------------")
     print(f"🌐 正在從網路(PC & SNKRDUNK)抓取市場行情 (異圖/特殊版: {is_alt_art})...")
     loop = asyncio.get_running_loop()
-    # Using independent copy_context().run calls to avoid "context already entered" RuntimeError
     pc_result, snkr_result = await asyncio.gather(
         loop.run_in_executor(None, contextvars.copy_context().run, search_pricecharting, name, number, set_code, grade, is_alt_art, category, is_flagship),
         loop.run_in_executor(None, contextvars.copy_context().run, search_snkrdunk, name, jp_name, number, set_code, grade, is_alt_art, card_language, snkr_variant_kws),
     )
-        
+
     pc_records = pc_result[0] if pc_result else None
     pc_url = pc_result[1] if pc_result else None
-    
+    pc_img_url = pc_result[2] if pc_result else None
+
     snkr_records = snkr_result[0] if snkr_result else None
     img_url = snkr_result[1] if snkr_result else None
     snkr_url = snkr_result[2] if snkr_result else None
 
-    # Debug step2: 儲存爬蟲結果
+    # Fallback image source
+    if not img_url and pc_img_url:
+        img_url = pc_img_url
+
     _debug_log(f"Step 2 PC: {len(pc_records) if pc_records else 0} 筆, url={pc_url}")
     _debug_log(f"Step 2 SNKR: {len(snkr_records) if snkr_records else 0} 筆, img={img_url}, url={snkr_url}")
     _debug_save("step2_pc.json", json.dumps(pc_records or [], indent=2, ensure_ascii=False))
     _debug_save("step2_snkr.json", json.dumps(snkr_records or [], indent=2, ensure_ascii=False))
     _debug_save("step2_meta.json", json.dumps({
-        "pc_url": pc_url, "pc_records_count": len(pc_records) if pc_records else 0,
-        "snkr_url": snkr_url, "snkr_records_count": len(snkr_records) if snkr_records else 0,
+        "pc_url": pc_url,
+        "pc_records_count": len(pc_records) if pc_records else 0,
+        "snkr_url": snkr_url,
+        "snkr_records_count": len(snkr_records) if snkr_records else 0,
         "snkr_img_url": img_url,
     }, indent=2, ensure_ascii=False))
-    
+
     jpy_rate = get_exchange_rate()
-    
-    # 第三階段：產生 Markdown 報告
-    
-    c_name_display = c_name if c_name else jp_name if jp_name else name
-    
-    report_lines = []
-    report_lines.append(f"# MARKET REPORT GENERATED")
-    report_lines.append("")
-    report_lines.append(f"⚡ {c_name_display} ({name}) #{number}")
-    report_lines.append(f"💎 等級：{grade}")
-    
-    category_display = "寶可夢卡牌" if category.lower() == "pokemon" else "航海王卡牌" if category.lower() == "one piece" else category
-    report_lines.append(f"🏷️ 版本：{category_display}")
-    
-    report_lines.append(f"🔢 編號：{number}")
-    if release_info:
-        report_lines.append(f"📅 發行：{release_info}")
-    if illustrator:
-        report_lines.append(f"🎨 插畫家：{illustrator}")
-    
-    report_lines.append("---")
-    report_lines.append("\n🔥 市場與收藏分析\n")
-    report_lines.append(f"🔥 市場熱度\n{market_heat}\n")
-    if features:
-        feat_formatted = features.replace('\\n', '\n')
-        report_lines.append(f"✨ 卡片特點\n{feat_formatted}\n")
-    if collection_value:
-        report_lines.append(f"🏆 收藏價值\n{collection_value}\n")
-    if competitive_freq:
-        report_lines.append(f"⚔️ 競技頻率\n{competitive_freq}\n")
-        
-    report_lines.append("---")
-    
+    return await finish_report_after_selection(
+        card_info,
+        pc_records,
+        pc_url,
+        pc_img_url,
+        snkr_records,
+        img_url,
+        snkr_url,
+        jpy_rate,
+        out_dir,
+        lang,
+        stream_mode=stream_mode,
+    )
+
+
+async def finish_report_after_selection(
+    card_info,
+    pc_records,
+    pc_url,
+    pc_img_url,
+    snkr_records,
+    img_url,
+    snkr_url,
+    jpy_rate,
+    out_dir,
+    lang,
+    stream_mode=False,
+):
+    name = card_info.get("name", "Unknown")
+    number = str(card_info.get("number", "0"))
+    grade = card_info.get("grade", "Ungraded")
+    category = card_info.get("category", "Pokemon")
+    release_info = card_info.get("release_info", "Unknown")
+    illustrator = card_info.get("illustrator", "Unknown")
+    market_heat = card_info.get("market_heat", "Unknown")
+    features = card_info.get("features", "Unknown")
+    collection_value = card_info.get("collection_value", "Unknown")
+    competitive_freq = card_info.get("competitive_freq", "Unknown")
+    jp_name = card_info.get("jp_name", "")
+    c_name = card_info.get("c_name", "")
+
+    # 圖片來源優先 SNKRDUNK，否則 PriceCharting
+    if not img_url and pc_img_url:
+        img_url = pc_img_url
+
     async def _parse_d(d_str):
-        d_str = d_str.strip()
-        # Handle relative dates: "n 分前", "n 時間前", "n 日前" or "n minutes ago", etc.
+        d_str = str(d_str).strip()
         if "前" in d_str or "ago" in d_str:
             num_match = re.search(r'\d+', d_str)
-            if not num_match: return datetime.now()
+            if not num_match:
+                return datetime.now()
             num = int(num_match.group(0))
             if "分" in d_str or "minute" in d_str:
                 return datetime.now() - timedelta(minutes=num)
@@ -1237,67 +1257,82 @@ async def process_single_image(image_path, api_key, out_dir=None, debug_session_
                 return datetime.now() - timedelta(hours=num)
             if "日" in d_str or "day" in d_str:
                 return datetime.now() - timedelta(days=num)
-        
-        # Handle "YYYY-MM-DD"
-        try:
-            return datetime.strptime(d_str, "%Y-%m-%d")
-        except: pass
-        
-        # Handle "YYYY/MM/DD"
-        try:
-            return datetime.strptime(d_str, "%Y/%m/%d")
-        except: pass
-        
-        # Handle "Jan 1, 2024"
-        try:
-            return datetime.strptime(d_str, "%b %d, %Y")
-        except: pass
-        
+        for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%b %d, %Y"):
+            try:
+                return datetime.strptime(d_str, fmt)
+            except Exception:
+                pass
         return datetime.now()
 
     cutoff_12m = datetime.now() - timedelta(days=365)
 
-    # ── 等級筛選：針對航海王 BGS 等級特別要求：同時顯示 BGS 9.5 與 PSA 10 各 10 筆 ──
+    # 等級篩選：航海王 BGS 額外保留 PSA 10 供比對
     is_one_piece = (category.lower() == "one piece")
-    is_bgs_grade = grade.upper().startswith('BGS')
-
+    is_bgs_grade = grade.upper().startswith("BGS")
     if is_one_piece and is_bgs_grade:
-        # PriceCharting: 抓取 BGS 9.5 和 PSA 10
-        bgs_pc = [r for r in (pc_records or []) if "BGS 9.5" in r.get('grade', '').upper() or "BGS9.5" in r.get('grade', '').upper()]
-        psa_pc = [r for r in (pc_records or []) if "PSA 10" in r.get('grade', '').upper() or "PSA10" in r.get('grade', '').upper()]
-        display_pc_records = bgs_pc[:10] + psa_pc[:10]
-        
-        # SNKRDUNK: 抓取 BGS 9.5 和 PSA 10 (S)
-        bgs_snkr = [r for r in (snkr_records or []) if r.get('grade') in ('BGS 9.5', 'BGS9.5', 'BGS 10', 'BGS10')]
-        psa_snkr = [r for r in (snkr_records or []) if r.get('grade') in ('S', 'PSA 10', 'PSA10')]
-        display_snkr_records = bgs_snkr[:10] + psa_snkr[:10]
+        bgs_pc = [r for r in (pc_records or []) if "BGS 9.5" in r.get("grade", "").upper() or "BGS9.5" in r.get("grade", "").upper()]
+        psa_pc = [r for r in (pc_records or []) if "PSA 10" in r.get("grade", "").upper() or "PSA10" in r.get("grade", "").upper()]
+        report_pc_records = bgs_pc[:10] + psa_pc[:10]
+
+        bgs_snkr = [r for r in (snkr_records or []) if r.get("grade") in ("BGS 9.5", "BGS9.5", "BGS 10", "BGS10")]
+        psa_snkr = [r for r in (snkr_records or []) if r.get("grade") in ("S", "PSA 10", "PSA10")]
+        report_snkr_records = bgs_snkr[:10] + psa_snkr[:10]
     else:
-        # 傳統過濾邏輯
-        display_pc_records = [r for r in (pc_records or []) if r.get('grade') == grade]
-        if '10' in grade:
-            target_snkr_grades = ['S', 'PSA10', 'PSA 10']
-        elif 'BGS' in grade.upper():
-            target_snkr_grades = [grade, grade.replace(' ', ''), 'BGS9.5', 'BGS 9.5', 'BGS10', 'BGS 10']
-        elif grade.lower() == 'ungraded':
-            target_snkr_grades = ['A']
+        report_pc_records = [r for r in (pc_records or []) if r.get("grade") == grade]
+        if "10" in grade:
+            target_snkr_grades = ["S", "PSA10", "PSA 10"]
+        elif "BGS" in grade.upper():
+            target_snkr_grades = [grade, grade.replace(" ", ""), "BGS9.5", "BGS 9.5", "BGS10", "BGS 10"]
+        elif grade.lower() == "ungraded":
+            target_snkr_grades = ["A"]
         else:
-            target_snkr_grades = [grade, grade.replace(' ', '')]
-        display_snkr_records = [r for r in (snkr_records or []) if r.get('grade') in target_snkr_grades]
+            target_snkr_grades = [grade, grade.replace(" ", "")]
+        report_snkr_records = [r for r in (snkr_records or []) if r.get("grade") in target_snkr_grades]
+
+    c_name_display = c_name if c_name else jp_name if jp_name else name
+    category_display = (
+        "寶可夢卡牌" if category.lower() == "pokemon"
+        else "航海王卡牌" if category.lower() == "one piece"
+        else category
+    )
+
+    report_lines = []
+    report_lines.append("# MARKET REPORT GENERATED")
+    report_lines.append("")
+    report_lines.append(f"⚡ {c_name_display} ({name}) #{number}")
+    report_lines.append(f"💎 等級：{grade}")
+    report_lines.append(f"🏷️ 版本：{category_display}")
+    report_lines.append(f"🔢 編號：{number}")
+    if release_info:
+        report_lines.append(f"📅 發行：{release_info}")
+    if illustrator:
+        report_lines.append(f"🎨 插畫家：{illustrator}")
+
+    report_lines.append("---")
+    report_lines.append("\n🔥 市場與收藏分析\n")
+    report_lines.append(f"🔥 市場熱度\n{market_heat}\n")
+    if features:
+        feat_formatted = str(features).replace("\\n", "\n")
+        report_lines.append(f"✨ 卡片特點\n{feat_formatted}\n")
+    if collection_value:
+        report_lines.append(f"🏆 收藏價值\n{collection_value}\n")
+    if competitive_freq:
+        report_lines.append(f"⚔️ 競技頻率\n{competitive_freq}\n")
+    report_lines.append("---")
 
     report_lines.append("📊 近期成交紀錄 (由新到舊)\n🏦 PriceCharting 成交紀錄")
-    if display_pc_records:
-        for r in display_pc_records[:10]:
+    if report_pc_records:
+        for r in report_pc_records[:10]:
             report_lines.append(f"📅 {r['date']}      💰 ${r['price']:.2f} USD      📝 狀態：{r['grade']}")
-        
-        # Filter for statistics: only last 12 months (target-grade only, not supplemented)
+
         stats_pc_records = []
-        for r in [x for x in display_pc_records if '參考 PSA 10' not in x.get('grade','')]:
-            parsed_date = await _parse_d(r['date'])
+        for r in report_pc_records:
+            parsed_date = await _parse_d(r.get("date", ""))
             if parsed_date > cutoff_12m:
                 stats_pc_records.append(r)
 
         if stats_pc_records:
-            prices = [r['price'] for r in stats_pc_records]
+            prices = [r["price"] for r in stats_pc_records]
             report_lines.append("📊 統計資料 (近 12 個月)")
             report_lines.append(f"　💰 最高成交價：${max(prices):.2f} USD")
             report_lines.append(f"　💰 最低成交價：${min(prices):.2f} USD")
@@ -1306,24 +1341,23 @@ async def process_single_image(image_path, api_key, out_dir=None, debug_session_
         else:
             report_lines.append("📊 統計資料 (近 12 個月無成交紀錄)")
     else:
-        report_lines.append("PriceCharting: 無此卡片資料")
-    
+        report_lines.append(f"PriceCharting: 無 {grade} 等級的成交紀錄")
+
     report_lines.append("\n---\n🏰 SNKRDUNK 成交紀錄")
-    if display_snkr_records:
-        for r in display_snkr_records[:10]:
-            usd_price = r['price'] / jpy_rate
+    if report_snkr_records:
+        for r in report_snkr_records[:10]:
+            usd_price = r["price"] / jpy_rate if jpy_rate else 0
             report_lines.append(f"📅 {r['date']}      💰 ¥{int(r['price']):,} (~${usd_price:.0f} USD)      📝 狀態：{r['grade']}")
-        
-        # Filter for statistics: only last 12 months (target-grade only, not supplemented)
+
         stats_snkr_records = []
-        for r in [x for x in display_snkr_records if '參考 PSA 10' not in x.get('grade', '')]:
-            parsed_date = await _parse_d(r['date'])
+        for r in report_snkr_records:
+            parsed_date = await _parse_d(r.get("date", ""))
             if parsed_date > cutoff_12m:
                 stats_snkr_records.append(r)
 
         if stats_snkr_records:
-            prices = [r['price'] for r in stats_snkr_records]
-            avg_price = sum(prices)/len(prices)
+            prices = [r["price"] for r in stats_snkr_records]
+            avg_price = sum(prices) / len(prices)
             report_lines.append("📊 統計資料 (近 12 個月)")
             report_lines.append(f"　💰 最高成交價：¥{int(max(prices)):,} (~${max(prices)/jpy_rate:.0f} USD)")
             report_lines.append(f"　💰 最低成交價：¥{int(min(prices)):,} (~${min(prices)/jpy_rate:.0f} USD)")
@@ -1332,8 +1366,8 @@ async def process_single_image(image_path, api_key, out_dir=None, debug_session_
         else:
             report_lines.append("📊 統計資料 (近 12 個月無成交紀錄)")
     else:
-        report_lines.append("SNKRDUNK: 無此卡片資料")
-        
+        report_lines.append(f"SNKRDUNK: 無 {grade} 等級的成交紀錄")
+
     report_lines.append("\n---")
     if pc_url:
         report_lines.append(f"🔗 [查看 PriceCharting]({pc_url})")
@@ -1341,26 +1375,66 @@ async def process_single_image(image_path, api_key, out_dir=None, debug_session_
         report_lines.append(f"🔗 [查看 SNKRDUNK]({snkr_url})")
         report_lines.append(f"🔗 [查看 SNKRDUNK 銷售歷史]({snkr_url}/sales-histories)")
 
-    final_report = '\n'.join(report_lines)
+    final_report = "\n".join(report_lines)
     print(final_report, force=True)
 
     # Debug step3: 儲存最終報告
     _debug_log("Step 3: 報告生成完成")
     _debug_save("step3_report.md", final_report)
-    
-    if out_dir:
-        os.makedirs(out_dir, exist_ok=True)
-        safe_name = re.sub(r'[^A-Za-z0-9]', '_', name)
-        safe_num = re.sub(r'[^A-Za-z0-9]', '_', str(number))
-        filename = f"PKM_Vision_{safe_name}_{safe_num}.md"
-        filepath = os.path.join(out_dir, filename)
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(final_report)
-        print(f"✅ 報告已儲存至: {filepath}")
-        
-        return final_report
-        
+
+    safe_name = re.sub(r"[^A-Za-z0-9]", "_", name)
+    safe_num = re.sub(r"[^A-Za-z0-9]", "_", str(number))
+    final_dest_dir = os.path.abspath(out_dir) if out_dir else tempfile.mkdtemp(prefix="openclaw_report_")
+    os.makedirs(final_dest_dir, exist_ok=True)
+    filepath = os.path.join(final_dest_dir, f"PKM_Vision_{safe_name}_{safe_num}.md")
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(final_report)
+    print(f"✅ 報告已儲存至: {filepath}")
+
+    # 海報生成需要卡圖 URL
+    card_info_for_poster = dict(card_info)
+    card_info_for_poster["img_url"] = img_url
+
+    if stream_mode:
+        return (
+            final_report,
+            {
+                "card_info": card_info_for_poster,
+                "snkr_records": snkr_records if snkr_records else [],
+                "pc_records": pc_records if pc_records else [],
+                "out_dir": final_dest_dir,
+            },
+        )
+
+    if REPORT_ONLY:
+        report_data = {
+            "card_info": card_info_for_poster,
+            "snkr_records": snkr_records if snkr_records else [],
+            "pc_records": pc_records if pc_records else [],
+        }
+        with open(os.path.join(final_dest_dir, "report_data.json"), "w", encoding="utf-8") as f:
+            json.dump(report_data, f, ensure_ascii=False, indent=2)
+
+        out_paths = await image_generator.generate_report(
+            card_info_for_poster,
+            snkr_records if snkr_records else [],
+            pc_records if pc_records else [],
+            out_dir=final_dest_dir,
+        )
+        return (final_report, out_paths)
+
     return final_report
+
+
+async def generate_posters(poster_data):
+    if not poster_data:
+        return []
+    return await image_generator.generate_report(
+        poster_data["card_info"],
+        poster_data["snkr_records"],
+        poster_data["pc_records"],
+        out_dir=poster_data["out_dir"],
+    )
 
 async def process_image_for_candidates(image_path, api_key, lang="zh"):
     """(Manual Mode) Analyzes image and returns URL candidates from PC and SNKRDUNK."""

@@ -25,6 +25,12 @@ OPENAI_API_KEY=your_openai_key_here
 | **Flow A (External)** | AI Agents with Vision | Pre-extracted JSON |
 | **Flow B (Internal)** | Automation / Simple Bots | Image Path |
 
+> [!IMPORTANT]
+> Both flows are first-class and must stay supported:
+> - Use **Flow A** when the agent already has card metadata (its own vision system).
+> - Use **Flow B** when the agent wants OpenClaw to do vision with API keys.
+> Never remove one flow as a fallback for the other.
+
 ---
 
 ## 🚀 Flow A: For AI Agents (Vision-to-Market)
@@ -105,6 +111,14 @@ You MUST execute `openclaw_facade.py` in FULL mode. You have TWO ways to do this
   "status": "success"
 }
 ```
+
+### 🔒 Output Contract (Non-Negotiable)
+When your tool returns JSON from OpenClaw:
+- `report_text` is the **source of truth** for message content. Post it as-is.
+- Do **not** rewrite, summarize, translate, or reformat `report_text`.
+- Do **not** invent your own report template.
+- Always upload both `poster_data.profile` and `poster_data.market`.
+- If `poster_data` is empty or missing, treat that as a tool error and report it explicitly.
 
 **3. Report (Post in Thread):**
 You MUST read the output JSON from the script. Then, send a new message in the created thread where:
