@@ -88,6 +88,18 @@ To get 100% accurate market data, agents should pay attention to these fields:
 ## 👾 Discord Interaction Protocol (CRITICAL FOR UI AGENTS)
 When you receive a user's request with an image in Discord, you **MUST** follow these 3 steps exactly.
 
+### ✅ Required Delivery Sequence (No Skips)
+You MUST follow this exact order:
+1. Create thread and capture `thread_id`.
+2. Run OpenClaw and parse output JSON.
+3. Send `report_text` into that `thread_id`.
+4. Send `poster_data.profile` into that `thread_id`.
+5. Send `poster_data.market` into that `thread_id`.
+
+Never send only posters without `report_text`.
+Never send any report/poster to the parent channel.
+If `thread_id` is missing, stop and report an error instead of sending anything.
+
 ### 🚨 Transport Rule (Must Follow in This Environment)
 For thread messaging, always use `action="send"` with `channelId=<thread_id>`.
 
@@ -124,6 +136,12 @@ message(
 `thread-reply` with `target` routes to the parent channel in this setup and may not deliver inside the thread.  
 After creating the thread, always store that thread ID and reuse it as `channelId` for both text and image sends.
 
+### 🚫 Forbidden Behaviors
+- Sending posters to main channel.
+- Sending posters before sending `report_text`.
+- Skipping thread creation and posting directly to parent channel.
+- If OpenClaw returns both text and posters, sending only posters.
+
 **1. Isolate (Create Thread):**
 You MUST NOT reply with the report in the main channel. You MUST use your thread-creation action/tool to create a new thread for the user's request.
 
@@ -155,12 +173,21 @@ When your tool returns JSON from OpenClaw:
 - Do **not** invent your own report template.
 - Always upload both `poster_data.profile` and `poster_data.market`.
 - If `poster_data` is empty or missing, treat that as a tool error and report it explicitly.
+- If your messaging tool cannot send text+file in one call, send in 3 separate calls in the SAME thread: text -> profile image -> market image.
 
 **3. Report (Post in Thread):**
 You MUST read the output JSON from the script. Then, send a new message in the created thread where:
 - The **message text** is exactly the string found in `"report_text"`.
 - You **MUST upload BOTH image files** listed under `"poster_data"` (`profile` and `market` paths). Do not assume the files don't exist; wait for them and USE YOUR LOCAL SYSTEM TOOLS to read and attach those two absolute file paths!
 If you forget to upload the posters, the user will be very disappointed.
+
+### 🧪 Final Pre-Send Checklist
+Before sending anything, verify:
+- I have a valid `thread_id`.
+- All sends use `action="send"` and `channelId=<thread_id>`.
+- I will send `report_text` first.
+- I will send both posters after text.
+- I am not sending to parent channel.
 
 ## 📁 Directory Structure
 - `openclaw_facade.py`: The single entry point (Supports `--json` discovery).
