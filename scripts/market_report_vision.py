@@ -170,6 +170,12 @@ def fetch_jina_markdown(target_url):
             
     return ""
 
+# v1.1 變更註解:
+# 1) SNKRDUNK 搜尋從 Jina HTML 解析改為原生 API (/en/v1/search)。
+# 2) 成交歷史從 sales-histories 頁面解析改為原生 API (/en/v1/streetwears/{id}/trading-histories)。
+# 3) 新增 session warmup + retry，降低 terminal 直接呼叫 API 時的 403 機率。
+# 4) 維持既有搜尋決策流程: 先候選搜尋 -> 編號/Variant/語言過濾 -> 再抓價格。
+# 5) SNKRDUNK API 價格來源為 USD 時，先轉回 JPY，維持舊報表顯示格式。
 def _create_snkr_api_session():
     session = requests.Session()
     session.headers.update({
@@ -618,6 +624,12 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
 
     terms_to_try = []
     
+    # [NEW] 優化搜尋順序：越短越精確的優先，避免過長的系列名稱干擾
+    if number_padded != "000":
+        if jp_name_query:
+            terms_to_try.append(f"{jp_name_query} {number_padded}")
+        terms_to_try.append(f"{en_name_query} {number_padded}")
+
     if set_code and number_padded != "000":
         if jp_name_query:
             terms_to_try.append(f"{jp_name_query} {set_code} {number_padded}")
@@ -628,21 +640,8 @@ def search_snkrdunk(en_name, jp_name, number, set_code, target_grade, is_alt_art
         if jp_name_query:
             terms_to_try.append(f"{jp_name_query} {set_code}")
         terms_to_try.append(f"{en_name_query} {set_code}")
-        
-    if jp_name_query:
-        if number_padded != "000":
-            terms_to_try.append(f"{jp_name_query} {number_padded}")
             
-    if not terms_to_try and number_padded != "000":
-        if jp_name_query:
-            terms_to_try.append(f"{jp_name_query} {number_padded}")
-        
-        # SNKRDUNK fallback with full textual Set Name instead of Set Code
-        if set_name:
-            terms_to_try.append(f"{en_name_query} {set_name} {number_padded}")
-            
-        terms_to_try.append(f"{en_name_query} {number_padded}")
-        
+    # Fallback to just name if no number or set_code combinations yielded results
     if not terms_to_try:
         if jp_name_query:
             terms_to_try.append(jp_name_query)
