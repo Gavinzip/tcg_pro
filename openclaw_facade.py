@@ -10,6 +10,46 @@ import traceback
 sys.path.append(os.path.join(os.path.dirname(__file__), "scripts"))
 import market_report_vision as mrv
 
+def _normalize_card_info(card_info, native_mode=False):
+    data = dict(card_info or {})
+    neutral_desc = "N/A（資料不足）"
+    native_desc = "N/A（未啟用 API 視覺辨識）"
+    default_desc = native_desc if native_mode else neutral_desc
+
+    defaults = {
+        "name": "Unknown Card",
+        "number": "Unknown",
+        "set_code": "",
+        "grade": "Ungraded",
+        "jp_name": "",
+        "c_name": "",
+        "category": "Pokemon",
+        "release_info": "Unknown",
+        "illustrator": "Unknown",
+        "market_heat": default_desc,
+        "collection_value": default_desc,
+        "competitive_freq": default_desc,
+        "features": "N/A",
+        "is_alt_art": False,
+    }
+
+    for k, v in defaults.items():
+        cur = data.get(k)
+        if cur is None or (isinstance(cur, str) and not cur.strip()):
+            data[k] = v
+
+    # Normalize common "unknown" literals into neutral text.
+    unknown_markers = {"unknown", "n/a", "na", "none", "null", "未提供", "未知"}
+    for k in ("market_heat", "collection_value", "competitive_freq", "features"):
+        cur = str(data.get(k, "")).strip()
+        if not cur or cur.lower() in unknown_markers:
+            data[k] = default_desc if k != "features" else "N/A"
+
+    if isinstance(data.get("is_alt_art"), str):
+        data["is_alt_art"] = data["is_alt_art"].strip().lower() == "true"
+
+    return data
+
 async def run_openclaw(image_path=None, mode="json", lang="zh", poster_version="v3", debug_dir=None, card_info=None):
     """
     OpenClaw 核心門面函數 (Facade)
@@ -21,18 +61,18 @@ async def run_openclaw(image_path=None, mode="json", lang="zh", poster_version="
     if debug_dir:
         mrv._set_debug_dir(debug_dir)
 
-    api_key = os.getenv("MINIMAX_API_KEY") or os.getenv("OPENAI_API_KEY")
+    api_key = (os.getenv("MINIMAX_API_KEY") or os.getenv("OPENAI_API_KEY") or "").strip()
     current_card_info = None
 
     # --- 階段 1: 取得卡片資訊 (Recognition Phase) ---
     if card_info:
         print(f"📡 [OpenClaw] 使用外部傳入的 JSON 資訊，跳過視覺辨識。")
-        current_card_info = card_info
+        current_card_info = _normalize_card_info(card_info, native_mode=False)
     else:
         if not image_path or not os.path.exists(image_path):
             return {"error": f"找不到圖片或未提供 card_info: {image_path}"}
             
-        is_llm_mode = api_key is not None
+        is_llm_mode = bool(api_key)
         vision_mode_str = "LLM (OpenAI/MiniMax)" if is_llm_mode else "Native (OpenClaw)"
         print(f"📡 [OpenClaw] 辨識模式: {vision_mode_str}")
 
@@ -40,19 +80,19 @@ async def run_openclaw(image_path=None, mode="json", lang="zh", poster_version="
             print(f"🔍 [OpenClaw] 執行 LLM 辨識 | 處理圖片: {os.path.basename(image_path)}")
             res = await mrv.process_image_for_candidates(image_path, api_key, lang=lang)
             if res and len(res) >= 1:
-                current_card_info = res[0]
+                current_card_info = _normalize_card_info(res[0], native_mode=False)
             else:
                 return {"error": "LLM 辨識失敗"}
         else:
             # Native Mode 佔位邏輯
             print(f"🔍 [OpenClaw] 執行 Native 辨識 | 處理圖片: {os.path.basename(image_path)}")
-            current_card_info = {
+            current_card_info = _normalize_card_info({
                 "name": os.path.basename(image_path).split('.')[0], # 直接從檔名猜
                 "number": "Unknown",
                 "set_code": "",
-                "grade": "Common",
+                "grade": "Ungraded",
                 "note": "使用 Native 模式 (未偵測到 API Key)"
-            }
+            }, native_mode=True)
 
     # 儲存到 debug 資料夾 (如有)
     if debug_dir and current_card_info:
