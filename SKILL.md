@@ -31,6 +31,12 @@ OPENAI_API_KEY=your_openai_key_here
 > - Use **Flow B** when the agent wants OpenClaw to do vision with API keys.
 > Never remove one flow as a fallback for the other.
 
+### 🖼️ Poster Template Versions
+- Supported versions: `v1`, `v3` (legacy alias `b3` is accepted and mapped to `v3`)
+- Default: `v3` (must be treated as default unless user explicitly requests otherwise)
+- CLI override: `--poster_version v1` or `--poster_version v3` (or `b3`)
+- JSON mode can optionally include `"poster_version": "v1"` / `"v3"` / `"b3"` in the input metadata.
+
 ---
 
 ## 🚀 Flow A: For AI Agents (Vision-to-Market)
@@ -60,7 +66,7 @@ Pass your extracted data to OpenClaw via the CLI. This skips internal vision and
 
 **CLI Command:**
 ```bash
-python3 openclaw_facade.py --mode full --json '{"name": "Mewtwo", "number": "150/165", "set_code": "SV1"}'
+python3 openclaw_facade.py --mode full --poster_version v3 --json '{"name": "Mewtwo", "number": "150/165", "set_code": "SV1"}'
 ```
 
 ---
@@ -70,7 +76,7 @@ If you prefer not to write JSON manually, or if you want the script's built-in L
 
 **CLI Command:**
 ```bash
-python3 openclaw_facade.py "path/to/downloaded/image.jpg" --mode full
+python3 openclaw_facade.py "path/to/downloaded/image.jpg" --mode full --poster_version v3
 ```
 
 *Note: This flow requires `MINIMAX_API_KEY` or `OPENAI_API_KEY` to be set in the `.env` file to function properly.*
@@ -171,10 +177,12 @@ message(
 You MUST execute `openclaw_facade.py` in FULL mode. You have TWO ways to do this, choose ONE based on your capabilities:
 
 - **Flow A (External JSON)**: If you extract the card info yourself, run:
-  `python3 openclaw_facade.py --mode full --json '{"name": "...", "number": "...", "set_code": "...", "grade": "..."}'`
+  `python3 openclaw_facade.py --mode full --poster_version v3 --json '{"name": "...", "number": "...", "set_code": "...", "grade": "..."}'`
 
 - **Flow B (Image Pass-through)**: If you want the script's native vision to do the work, download the image and pass it:
-  `python3 openclaw_facade.py "path/to/downloaded/image.jpg" --mode full`
+  `python3 openclaw_facade.py "path/to/downloaded/image.jpg" --mode full --poster_version v3`
+
+- **Optional switch to legacy layout**: add `--poster_version v1` only if user asks for old design.
 
 **Important Note:** The script will always output a JSON containing the textual report AND the absolute paths to the generated poster images. It looks exactly like this:
 ```json

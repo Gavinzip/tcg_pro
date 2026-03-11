@@ -1078,6 +1078,7 @@ async def process_single_image(
     api_key,
     out_dir=None,
     stream_mode=False,
+    poster_version="v3",
     lang="zh",
     debug_session_root=None,
     batch_index=1,
@@ -1136,6 +1137,8 @@ async def process_single_image(
     is_alt_art = card_info.get("is_alt_art", False)
     if isinstance(is_alt_art, str):
         is_alt_art = is_alt_art.lower() == "true"
+    # Allow external JSON to override poster version when provided.
+    poster_version = str(card_info.get("poster_version", poster_version))
 
     _debug_save("step1_meta.json", json.dumps(card_info, ensure_ascii=False, indent=2))
 
@@ -1198,8 +1201,13 @@ async def process_single_image(
     img_url = snkr_result[1] if snkr_result else None
     snkr_url = snkr_result[2] if snkr_result else None
 
-    # Fallback image source
-    if not img_url and pc_img_url:
+    # Prefer higher quality image for poster rendering.
+    # SNKRDUNK "bg_removed" or explicit small size often looks blurry on large posters.
+    if pc_img_url and (
+        not img_url
+        or "bg_removed" in str(img_url).lower()
+        or "size=m" in str(img_url).lower()
+    ):
         img_url = pc_img_url
 
     _debug_log(f"Step 2 PC: {len(pc_records) if pc_records else 0} 筆, url={pc_url}")
@@ -1225,6 +1233,7 @@ async def process_single_image(
         snkr_url,
         jpy_rate,
         out_dir,
+        poster_version,
         lang,
         stream_mode=stream_mode,
     )
@@ -1240,6 +1249,7 @@ async def finish_report_after_selection(
     snkr_url,
     jpy_rate,
     out_dir,
+    poster_version,
     lang,
     stream_mode=False,
 ):
@@ -1256,8 +1266,12 @@ async def finish_report_after_selection(
     jp_name = card_info.get("jp_name", "")
     c_name = card_info.get("c_name", "")
 
-    # 圖片來源優先 SNKRDUNK，否則 PriceCharting
-    if not img_url and pc_img_url:
+    # 圖片來源優先使用高解析：若 SNKRDUNK 圖片偏低清，改用 PriceCharting。
+    if pc_img_url and (
+        not img_url
+        or "bg_removed" in str(img_url).lower()
+        or "size=m" in str(img_url).lower()
+    ):
         img_url = pc_img_url
 
     async def _parse_d(d_str):
@@ -1419,6 +1433,7 @@ async def finish_report_after_selection(
                 "snkr_records": snkr_records if snkr_records else [],
                 "pc_records": pc_records if pc_records else [],
                 "out_dir": final_dest_dir,
+                "poster_version": poster_version,
             },
         )
 
@@ -1436,6 +1451,7 @@ async def finish_report_after_selection(
             snkr_records if snkr_records else [],
             pc_records if pc_records else [],
             out_dir=final_dest_dir,
+            template_version=poster_version,
         )
         return (final_report, out_paths)
 
@@ -1450,6 +1466,7 @@ async def generate_posters(poster_data):
         poster_data["snkr_records"],
         poster_data["pc_records"],
         out_dir=poster_data["out_dir"],
+        template_version=poster_data.get("poster_version", "v3"),
     )
 
 async def process_image_for_candidates(image_path, api_key, lang="zh"):

@@ -10,7 +10,7 @@ import traceback
 sys.path.append(os.path.join(os.path.dirname(__file__), "scripts"))
 import market_report_vision as mrv
 
-async def run_openclaw(image_path=None, mode="json", lang="zh", debug_dir=None, card_info=None):
+async def run_openclaw(image_path=None, mode="json", lang="zh", poster_version="v3", debug_dir=None, card_info=None):
     """
     OpenClaw 核心門面函數 (Facade)
     
@@ -73,7 +73,13 @@ async def run_openclaw(image_path=None, mode="json", lang="zh", debug_dir=None, 
             
             # 將 stream_mode 改為 False，強制產生海報圖片
             result = await mrv.process_single_image(
-                image_path, api_key, out_dir=debug_dir, stream_mode=False, lang=lang, external_card_info=current_card_info
+                image_path,
+                api_key,
+                out_dir=debug_dir,
+                stream_mode=False,
+                poster_version=poster_version,
+                lang=lang,
+                external_card_info=current_card_info
             )
             
             if isinstance(result, tuple):
@@ -103,6 +109,12 @@ if __name__ == "__main__":
     parser.add_argument("image", nargs="?", help="Path to the card image (optional if --json or --json_file is provided)")
     parser.add_argument("--mode", choices=["json", "full"], default="json", help="Mode: json (recognition) or full (report)")
     parser.add_argument("--lang", choices=["zh", "en"], default="zh", help="Language for output")
+    parser.add_argument(
+        "--poster_version",
+        choices=["v1", "v3", "b3"],
+        default="v3",
+        help="Poster template version (v1 or v3, b3 is alias of v3; default: v3)",
+    )
     parser.add_argument("--debug", help="Directory to save debug logs and artifacts")
     parser.add_argument("--json", help="Raw JSON string of card metadata (Flow A)")
     parser.add_argument("--json_file", help="Path to a JSON file containing card metadata (Flow A)")
@@ -124,6 +136,7 @@ if __name__ == "__main__":
         args.image, 
         mode=args.mode, 
         lang=args.lang, 
+        poster_version=args.poster_version,
         debug_dir=args.debug, 
         card_info=external_card_info
     ))

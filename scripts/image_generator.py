@@ -1,7 +1,9 @@
 import os
 import urllib.request
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 import base64
 import io
+from collections import deque
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 from datetime import datetime
@@ -29,6 +31,27 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # 2GB RAM can safe handle 3-4 simultaneous browser tabs while the bot is running
 RENDER_SEMAPHORE = asyncio.Semaphore(3)
 
+def _resolve_template_bundle(template_version):
+    version = str(template_version or "v3").strip().lower().replace(" ", "")
+    if version in {"1", "v1"}:
+        template_dir = os.path.join(BASE_DIR, "templates", "v1")
+        profile_tpl = os.path.join(template_dir, "report_template_1.html")
+        market_tpl = os.path.join(template_dir, "report_template_2.html")
+        return "v1", template_dir, profile_tpl, market_tpl
+
+    # Treat "b3" as v3 alias to tolerate typo/input variants.
+    if version in {"3", "v3", "b3"}:
+        template_dir = os.path.join(BASE_DIR, "templates", "v3")
+        profile_tpl = os.path.join(template_dir, "ai_studio_code (1).html")
+        market_tpl = os.path.join(template_dir, "ai_studio_code.html")
+        return "v3", template_dir, profile_tpl, market_tpl
+
+    # Fallback to v3 by default.
+    template_dir = os.path.join(BASE_DIR, "templates", "v3")
+    profile_tpl = os.path.join(template_dir, "ai_studio_code (1).html")
+    market_tpl = os.path.join(template_dir, "ai_studio_code.html")
+    return "v3", template_dir, profile_tpl, market_tpl
+
 class AsyncBrowserManager:
     _instance = None
     _browser = None
@@ -53,22 +76,167 @@ class AsyncBrowserManager:
                 await cls._playwright.stop()
                 cls._playwright = None
 
-def get_image_base64_from_url(url):
-    if not url: return ""
+def _candidate_image_urls(url):
+    if not url:
+        return []
+    src = str(url).strip()
+    candidates = []
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'})
-        with urllib.request.urlopen(req) as response:
-            img_data = response.read()
-            b64 = base64.b64encode(img_data).decode('utf-8')
-            mime = "image/png"
-            if url.lower().endswith(".jpg") or url.lower().endswith(".jpeg"):
-                mime = "image/jpeg"
-            elif url.lower().endswith(".webp"):
-                mime = "image/webp"
-            return f"data:{mime};base64,{b64}"
-    except Exception as e:
-        print(f"Failed to fetch image from {url}: {e}")
+        parsed = urlsplit(src)
+        host = parsed.netloc.lower()
+        query_dict = dict(parse_qsl(parsed.query, keep_blank_values=True))
+
+        # Prefer higher-resolution image variants for SNKRDUNK.
+        if "snkrdunk.com" in host and "size" in query_dict:
+            q_no_size = dict(query_dict)
+            q_no_size.pop("size", None)
+            candidates.append(urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(q_no_size), parsed.fragment)))
+
+            q_large = dict(query_dict)
+            q_large["size"] = "l"
+            candidates.append(urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(q_large), parsed.fragment)))
+    except Exception:
+        pass
+
+    candidates.append(src)
+    seen = set()
+    deduped = []
+    for c in candidates:
+        if c and c not in seen:
+            seen.add(c)
+            deduped.append(c)
+    return deduped
+
+
+def get_image_base64_from_url(url):
+    if not url:
         return ""
+
+    for candidate in _candidate_image_urls(url):
+        try:
+            req = urllib.request.Request(
+                candidate,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=20) as response:
+                img_data = response.read()
+                b64 = base64.b64encode(img_data).decode("utf-8")
+                mime = response.headers.get_content_type() or "image/png"
+                if mime == "application/octet-stream":
+                    lower_url = candidate.lower()
+                    if lower_url.endswith(".jpg") or lower_url.endswith(".jpeg"):
+                        mime = "image/jpeg"
+                    elif lower_url.endswith(".webp"):
+                        mime = "image/webp"
+                    else:
+                        mime = "image/png"
+                return f"data:{mime};base64,{b64}"
+        except Exception:
+            continue
+
+    print(f"Failed to fetch image from {url}")
+    return ""
+
+
+def _strip_white_border_background_png(logo_bytes):
+    try:
+        import numpy as np
+        import matplotlib.image as mpimg
+    except Exception:
+        return logo_bytes
+
+    try:
+        arr = mpimg.imread(io.BytesIO(logo_bytes), format="png")
+        if arr is None or arr.ndim != 3:
+            return logo_bytes
+
+        if arr.dtype != np.float32 and arr.dtype != np.float64:
+            arr = arr.astype(np.float32) / 255.0
+
+        if arr.shape[2] == 3:
+            alpha = np.ones((arr.shape[0], arr.shape[1], 1), dtype=arr.dtype)
+            arr = np.concatenate([arr, alpha], axis=2)
+
+        rgb = arr[:, :, :3]
+        alpha = arr[:, :, 3]
+
+        # Already transparent: keep original bytes to avoid unnecessary re-encoding.
+        if (alpha < 0.01).any():
+            return logo_bytes
+
+        h, w = alpha.shape
+        edge_samples = np.vstack([rgb[0, :, :], rgb[h - 1, :, :], rgb[:, 0, :], rgb[:, w - 1, :]])
+        bg_color = np.median(edge_samples, axis=0)
+
+        dist = np.sqrt(np.sum((rgb - bg_color) ** 2, axis=2))
+        bg_mask = (dist < 0.20) & (alpha > 0.75)
+
+        # Also capture near-white backgrounds.
+        near_white = (
+            (rgb[:, :, 0] > 0.93)
+            & (rgb[:, :, 1] > 0.93)
+            & (rgb[:, :, 2] > 0.93)
+            & (alpha > 0.75)
+        )
+        bg_mask = bg_mask | near_white
+
+        visited = np.zeros((h, w), dtype=bool)
+        q = deque()
+
+        def push(y, x):
+            if 0 <= y < h and 0 <= x < w and bg_mask[y, x] and not visited[y, x]:
+                visited[y, x] = True
+                q.append((y, x))
+
+        for x in range(w):
+            push(0, x)
+            push(h - 1, x)
+        for y in range(h):
+            push(y, 0)
+            push(y, w - 1)
+
+        while q:
+            y, x = q.popleft()
+            push(y - 1, x)
+            push(y + 1, x)
+            push(y, x - 1)
+            push(y, x + 1)
+
+        if not visited.any():
+            return logo_bytes
+
+        arr[:, :, 3] = np.where(visited, 0.0, alpha)
+
+        out = io.BytesIO()
+        plt.imsave(out, arr, format="png")
+        return out.getvalue()
+    except Exception as e:
+        print(f"⚠️ Logo transparency processing failed: {e}")
+        return logo_bytes
+
+
+async def _screenshot_poster_root(page, out_path):
+    try:
+        await page.evaluate(
+            """async () => {
+                if (document.fonts && document.fonts.ready) {
+                    await document.fonts.ready;
+                }
+            }"""
+        )
+    except Exception:
+        pass
+    await page.wait_for_timeout(300)
+
+    locator = page.locator('[data-poster-root="true"], [data-poster-root]').first
+    if await locator.count() > 0:
+        await locator.screenshot(path=out_path, type="png", animations="disabled")
+        return
+
+    await page.screenshot(path=out_path, type="png", full_page=False, animations="disabled")
 
 def parse_level_and_desc(text):
     text = str(text).strip()
@@ -86,10 +254,15 @@ def get_width_from_level(level):
     if 'low' in l: return 30
     return 50
 
-def generate_features_html(features_text):
+def generate_features_html(features_text, theme="dark"):
     lines = [L.strip().lstrip('•').strip() for L in str(features_text).split('\n') if L.strip()]
     icons = ['verified', 'hotel_class', 'bolt', 'star', 'diamond']
     html = ""
+    is_light = (theme == "light")
+    panel_overlay = "bg-slate-900/[0.03] group-hover:bg-slate-900/[0.06]" if is_light else "bg-primary/5 group-hover:bg-primary/10"
+    icon_class = "text-amber-600" if is_light else "text-primary-light drop-shadow-[0_0_5px_rgba(212,175,55,1)]"
+    title_class = "text-slate-800" if is_light else "text-white"
+    desc_class = "text-slate-600" if is_light else "text-slate-100"
     for i, line in enumerate(lines[:2]):
         title = line
         desc = ""
@@ -107,23 +280,37 @@ def generate_features_html(features_text):
         icon = icons[i % len(icons)]
         col_span = " md:col-span-2" if len(lines) == 3 and i == 2 else ""
         
-        desc_html = f'<p class="text-slate-100 text-[14px] mt-1.5 leading-relaxed">{desc}</p>' if desc else ''
+        desc_html = f'<p class="{desc_class} text-[14px] mt-1.5 leading-relaxed">{desc}</p>' if desc else ''
         
         html += f"""
 <div class="glass-panel p-5 rounded-xl flex items-start gap-4{col_span} relative overflow-hidden group">
-<div class="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors pointer-events-none"></div>
-<span class="material-symbols-outlined text-primary-light drop-shadow-[0_0_5px_rgba(212,175,55,1)] mt-0.5 text-[26px]">{icon}</span>
+<div class="absolute inset-0 {panel_overlay} transition-colors pointer-events-none"></div>
+<span class="material-symbols-outlined {icon_class} mt-0.5 text-[26px]">{icon}</span>
 <div class="relative z-10 flex flex-col justify-center">
-<h4 class="text-white font-bold text-[16px] tracking-wide">{title}</h4>
+<h4 class="{title_class} font-bold text-[16px] tracking-wide">{title}</h4>
 {desc_html}
 </div>
 </div>
 """
     return html
 
-def generate_table_rows(records, is_jpy=False, target_grade=None):
+def generate_table_rows(records, is_jpy=False, target_grade=None, theme="dark"):
+    is_light = (theme == "light")
+    if is_light:
+        empty_cls = "text-slate-500"
+        row_hover = "hover:bg-slate-900/[0.04]"
+        date_cls = "text-slate-700"
+        grade_cls = "text-slate-500"
+        price_cls = "text-sky-700"
+    else:
+        empty_cls = "text-slate-300"
+        row_hover = "hover:bg-primary/5"
+        date_cls = "text-slate-300"
+        grade_cls = "text-slate-400"
+        price_cls = "text-primary"
+
     if not records:
-        return '<tr><td colspan="3" class="p-3 pl-4 text-slate-300 text-center">No transactions found</td></tr>'
+        return f'<tr><td colspan="3" class="p-3 pl-4 {empty_cls} text-center">No transactions found</td></tr>'
         
     filtered_records = []
     if target_grade:
@@ -151,10 +338,10 @@ def generate_table_rows(records, is_jpy=False, target_grade=None):
             price_str = f"${float(r['price']):.2f}"
             
         html += f"""
-<tr class="hover:bg-primary/5 transition-colors">
-<td class="p-4 pl-4 text-slate-300 text-base">{date}</td>
-<td class="p-4 text-slate-400 text-base">{grade}</td>
-<td class="p-4 pr-4 text-right font-medium text-primary text-base">{price_str}</td>
+<tr class="{row_hover} transition-colors">
+<td class="p-4 pl-4 {date_cls} text-base">{date}</td>
+<td class="p-4 {grade_cls} text-base">{grade}</td>
+<td class="p-4 pr-4 text-right font-medium {price_cls} text-base">{price_str}</td>
 </tr>
 """
     return html
@@ -188,7 +375,7 @@ def get_badge_html(grade):
 </div>"""
 
 
-def create_premium_matplotlib_chart_b64(records, color_line='#f4d125', target_grade="PSA 10", is_jpy=False):
+def create_premium_matplotlib_chart_b64(records, color_line='#f4d125', target_grade="PSA 10", is_jpy=False, theme="dark"):
     import re
     from datetime import datetime, timedelta
     import matplotlib.dates as mdates
@@ -246,7 +433,37 @@ def create_premium_matplotlib_chart_b64(records, color_line='#f4d125', target_gr
         if cutoff_idx > 0:
             sorted_dates = sorted_dates[cutoff_idx:]
 
-    fig, ax1 = plt.subplots(figsize=(6, 2.5), facecolor='none')
+    if theme == "light":
+        axis_text = '#28425c'
+        axis_text_2 = '#4f6d89'
+        grid_color = '#8aa6bf'
+        spine_color = '#8aa6bf'
+        legend_color = '#28425c'
+        bar_color = '#aec7db'
+        point_edge = '#ffffff'
+        bar_alpha = 0.65
+        line_width = 3.8
+        point_size = 62
+        point_edge_width = 1.8
+        y_grid_alpha = 0.35
+        x_grid_alpha = 0.22
+    else:
+        axis_text = '#cbc190'
+        axis_text_2 = '#a1a1aa'
+        grid_color = '#f4d125'
+        spine_color = '#685f31'
+        legend_color = 'white'
+        bar_color = '#fed7aa'
+        point_edge = '#ffffff'
+        bar_alpha = 0.85
+        line_width = 3.0
+        point_size = 50
+        point_edge_width = 1.5
+        y_grid_alpha = 0.2
+        x_grid_alpha = 0.1
+
+    # Use a wider/taller canvas ratio to better fill the poster chart slot.
+    fig, ax1 = plt.subplots(figsize=(8.0, 3.6), facecolor='none')
     ax1.set_facecolor('none')
 
     if not sorted_dates:
@@ -272,19 +489,26 @@ def create_premium_matplotlib_chart_b64(records, color_line='#f4d125', target_gr
     ax2 = ax1.twinx()
     
     # 1. Bar Chart (Volume / Quantity) on Right Axis
-    bar_color = '#fed7aa' # Light orange
-    ax2.bar(sorted_dates, volumes, color=bar_color, alpha=0.85, width=0.7, zorder=1, label="Quantity")
+    ax2.bar(sorted_dates, volumes, color=bar_color, alpha=bar_alpha, width=0.7, zorder=1, label="Quantity")
     
     # 2. Line Chart (Price) on Left Axis
-    ax1.plot(sorted_dates, prices, color=color_line, linewidth=3.0, zorder=4, label=price_label)
-    ax1.scatter(sorted_dates, prices, color=color_line, s=50, edgecolors='#ffffff', linewidths=1.5, zorder=5)
+    ax1.plot(sorted_dates, prices, color=color_line, linewidth=line_width, zorder=4, label=price_label)
+    ax1.scatter(sorted_dates, prices, color=color_line, s=point_size, edgecolors=point_edge, linewidths=point_edge_width, zorder=5)
+
+    # Keep headroom so top-left legend does not collide with high points.
+    p_min = min(prices) if prices else 0
+    p_max = max(prices) if prices else 1
+    p_span = max(p_max - p_min, 1.0)
+    y_bottom = max(0.0, p_min - p_span * 0.12)
+    y_top = p_max + p_span * 0.38
+    ax1.set_ylim(y_bottom, y_top)
 
     # Styles
     for ax in [ax1, ax2]:
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['left'].set_visible(False)
-    ax1.spines['bottom'].set_color('#685f31')
+    ax1.spines['bottom'].set_color(spine_color)
     ax2.spines['bottom'].set_visible(False)
 
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
@@ -293,9 +517,9 @@ def create_premium_matplotlib_chart_b64(records, color_line='#f4d125', target_gr
     locator = mdates.AutoDateLocator(minticks=3, maxticks=7)
     ax1.xaxis.set_major_locator(locator)
     
-    ax1.tick_params(axis='x', colors='#cbc190', labelsize=11, rotation=20)
-    ax1.tick_params(axis='y', colors='#cbc190', labelsize=12)
-    ax2.tick_params(axis='y', colors='#a1a1aa', labelsize=12)
+    ax1.tick_params(axis='x', colors=axis_text, labelsize=10, rotation=16)
+    ax1.tick_params(axis='y', colors=axis_text, labelsize=12)
+    ax2.tick_params(axis='y', colors=axis_text_2, labelsize=12)
     
     # Bold labels
     for t in ax1.get_xticklabels() + ax1.get_yticklabels():
@@ -303,12 +527,12 @@ def create_premium_matplotlib_chart_b64(records, color_line='#f4d125', target_gr
     for t in ax2.get_yticklabels():
         t.set_fontweight('bold')
 
-    plt.tight_layout()
-    # Stretch X-axis
-    plt.margins(x=0.08)
+    # Reduce outer padding while keeping axis labels readable.
+    fig.subplots_adjust(left=0.055, right=0.985, top=0.96, bottom=0.17)
+    plt.margins(x=0.01)
 
-    ax1.yaxis.grid(color='#f4d125', linestyle=':', linewidth=1, alpha=0.2)
-    ax1.xaxis.grid(color='#f4d125', linestyle=':', linewidth=1, alpha=0.1)
+    ax1.yaxis.grid(color=grid_color, linestyle=':', linewidth=1, alpha=y_grid_alpha)
+    ax1.xaxis.grid(color=grid_color, linestyle=':', linewidth=1, alpha=x_grid_alpha)
 
     # Ensure Line draws over Bars
     ax1.set_zorder(ax2.get_zorder()+1)
@@ -317,14 +541,22 @@ def create_premium_matplotlib_chart_b64(records, color_line='#f4d125', target_gr
     # Scale ax2 so bars only occupy bottom half
     ax2.set_ylim(0, max(volumes) * 2.2)
 
-    # Legend
+    # Legend (same anchor region, with safer overlap due added Y headroom).
     lines_1, labels_1 = ax1.get_legend_handles_labels()
     lines_2, labels_2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines_1 + lines_2, [price_label, vol_label], loc='upper left', prop={'size': 11}, frameon=False, labelcolor='white')
+    ax1.legend(
+        lines_1 + lines_2,
+        [price_label, vol_label],
+        loc='upper left',
+        bbox_to_anchor=(0.01, 0.995),
+        prop={'size': 11},
+        frameon=False,
+        labelcolor=legend_color,
+    )
 
-    plt.tight_layout()
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', transparent=True, dpi=200)
+    # Preserve predictable aspect ratio for poster slots while keeping transparent bg.
+    plt.savefig(buf, format='png', transparent=True, dpi=220, pad_inches=0)
     buf.seek(0)
     plt.close(fig)
     return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
@@ -355,17 +587,43 @@ def calculate_arbitrage_stats(pc_records, snkr_records):
         
     return avg_10, avg_9, avg_raw, profit, max_10
 
-async def generate_report(card_data, snkr_records, pc_records, out_dir=None):
+async def generate_report(card_data, snkr_records, pc_records, out_dir=None, template_version="v3"):
     if not out_dir:
         out_dir = BASE_DIR
-        
-    template1_path = os.path.join(BASE_DIR, "templates", "report_template_1.html")
-    template2_path = os.path.join(BASE_DIR, "templates", "report_template_2.html")
-    
+
+    selected_version, template_dir, template1_path, template2_path = _resolve_template_bundle(template_version)
+    print(f"🖼️ Poster template version: {selected_version} | profile={os.path.basename(template1_path)} | market={os.path.basename(template2_path)}")
+    # v3 currently uses a dark profile poster + light market-data poster.
+    # Keep text/chart palette aligned to each poster surface.
+    if selected_version == "v3":
+        profile_theme = "light"
+        market_theme = "light"
+    else:
+        profile_theme = "dark"
+        market_theme = "dark"
+    chart_line_color = "#1f6f8b" if market_theme == "light" else "#f4d125"
+    chart_img_class = "block w-full h-full object-fill" if market_theme == "light" else "block w-full h-full object-fill mix-blend-screen"
+    chart_img_class_raw = "block w-full h-full object-fill" if market_theme == "light" else "block w-full h-full object-fill mix-blend-screen opacity-90"
+
     with open(template1_path, 'r', encoding='utf-8') as f:
         html1 = f.read()
     with open(template2_path, 'r', encoding='utf-8') as f:
         html2 = f.read()
+
+    # Inline logo image when templates reference local "logo.png".
+    logo_path = os.path.join(template_dir, "logo.png")
+    if os.path.exists(logo_path):
+        try:
+            with open(logo_path, "rb") as logo_f:
+                logo_bytes = logo_f.read()
+            # If logo has white border/background, remove edge-connected white area.
+            logo_bytes = _strip_white_border_background_png(logo_bytes)
+            logo_b64 = base64.b64encode(logo_bytes).decode("utf-8")
+            logo_src = f"data:image/png;base64,{logo_b64}"
+            html1 = html1.replace('src="logo.png"', f'src="{logo_src}"').replace("src='logo.png'", f"src='{logo_src}'")
+            html2 = html2.replace('src="logo.png"', f'src="{logo_src}"').replace("src='logo.png'", f"src='{logo_src}'")
+        except Exception as e:
+            print(f"⚠️ Logo inline failed: {e}")
 
     name = card_data.get('c_name') or card_data.get('jp_name') or card_data.get('name', 'Unknown Trading Card')
     safe_name = name.replace(' ', '_').replace('/', '_')
@@ -443,7 +701,7 @@ async def generate_report(card_data, snkr_records, pc_records, out_dir=None):
         "{{ competitive_freq_level }}": cf_level,
         "{{ competitive_freq_desc }}": cf_desc,
         "{{ competitive_freq_width }}": str(get_width_from_level(cf_level)),
-        "{{ features_html }}": generate_features_html(card_data.get('features', '')),
+        "{{ features_html }}": generate_features_html(card_data.get('features', ''), theme=profile_theme),
         "{{ illustrator }}": card_data.get('illustrator', 'Unknown'),
         "{{ release_info }}": card_data.get('release_info', 'Unknown'),
         "{{ card_image }}": card_img_b64,
@@ -486,10 +744,10 @@ async def generate_report(card_data, snkr_records, pc_records, out_dir=None):
 
     if is_raw:
         # Generate 4 Charts (2 per column) with 30-day volume metrics overlaid
-        c_pc_10 = create_premium_matplotlib_chart_b64(pc_records, color_line='#f4d125', target_grade='PSA 10', is_jpy=False)
-        c_pc_raw = create_premium_matplotlib_chart_b64(pc_records, color_line='#f4d125', target_grade='Ungraded', is_jpy=False)
-        c_sk_10 = create_premium_matplotlib_chart_b64(snkr_records, color_line='#f4d125', target_grade='S', is_jpy=True)
-        c_sk_raw = create_premium_matplotlib_chart_b64(snkr_records, color_line='#f4d125', target_grade='A', is_jpy=True)
+        c_pc_10 = create_premium_matplotlib_chart_b64(pc_records, color_line=chart_line_color, target_grade='PSA 10', is_jpy=False, theme=market_theme)
+        c_pc_raw = create_premium_matplotlib_chart_b64(pc_records, color_line=chart_line_color, target_grade='Ungraded', is_jpy=False, theme=market_theme)
+        c_sk_10 = create_premium_matplotlib_chart_b64(snkr_records, color_line=chart_line_color, target_grade='S', is_jpy=True, theme=market_theme)
+        c_sk_raw = create_premium_matplotlib_chart_b64(snkr_records, color_line=chart_line_color, target_grade='A', is_jpy=True, theme=market_theme)
         
         v_pc_10 = count_30_days(pc_records, 'PSA 10')
         v_pc_raw_cutoff = datetime.now() - timedelta(days=30)
@@ -501,30 +759,30 @@ async def generate_report(card_data, snkr_records, pc_records, out_dir=None):
         v_sk_raw = count_30_days(snkr_records, 'A')
 
         pc_charts_html = f"""
-        <div class="w-full flex flex-col gap-8 mb-4 mt-4">
-            <div class="relative glass-panel rounded-xl border border-green-500/40 p-2 shadow-[0_0_20px_rgba(34,197,94,0.15)]">
+        <div class="w-full flex flex-col gap-6 mb-2 mt-4">
+            <div class="relative glass-panel rounded-xl border border-green-500/40 p-2 h-[220px] overflow-hidden shadow-[0_0_20px_rgba(34,197,94,0.15)]">
                 <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-green-500/50 px-3 py-1 rounded-full z-20 shadow-lg">PSA 10 Trend</span>
                 <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-green-500/50 z-20 shadow-lg">30d Vol: {v_pc_10} Set</span>
-                <img src="{c_pc_10}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
+                <img src="{c_pc_10}" class="{chart_img_class_raw}" />
             </div>
-            <div class="relative glass-panel rounded-xl border border-red-500/40 p-2 shadow-[0_0_20px_rgba(239,68,68,0.15)]">
+            <div class="relative glass-panel rounded-xl border border-red-500/40 p-2 h-[220px] overflow-hidden shadow-[0_0_20px_rgba(239,68,68,0.15)]">
                 <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-red-500/50 px-3 py-1 rounded-full z-20 shadow-lg">Ungraded Trend</span>
                 <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-red-500/50 z-20 shadow-lg">30d Vol: {v_pc_raw} Set</span>
-                <img src="{c_pc_raw}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
+                <img src="{c_pc_raw}" class="{chart_img_class_raw}" />
             </div>
         </div>"""
         
         snkr_charts_html = f"""
-        <div class="w-full flex flex-col gap-8 mb-4 mt-4">
-            <div class="relative glass-panel rounded-xl border border-green-500/40 p-2 shadow-[0_0_20px_rgba(34,197,94,0.15)]">
+        <div class="w-full flex flex-col gap-6 mb-2 mt-4">
+            <div class="relative glass-panel rounded-xl border border-green-500/40 p-2 h-[220px] overflow-hidden shadow-[0_0_20px_rgba(34,197,94,0.15)]">
                 <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-green-500/50 px-3 py-1 rounded-full z-20 shadow-lg">PSA 10 Trend</span>
                 <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-green-500/50 z-20 shadow-lg">30d Vol: {v_sk_10} Set</span>
-                <img src="{c_sk_10}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
+                <img src="{c_sk_10}" class="{chart_img_class_raw}" />
             </div>
-            <div class="relative glass-panel rounded-xl border border-red-500/40 p-2 shadow-[0_0_20px_rgba(239,68,68,0.15)]">
+            <div class="relative glass-panel rounded-xl border border-red-500/40 p-2 h-[220px] overflow-hidden shadow-[0_0_20px_rgba(239,68,68,0.15)]">
                 <span class="absolute top-[-14px] left-4 text-[10px] font-bold text-white tracking-widest bg-black border border-red-500/50 px-3 py-1 rounded-full z-20 shadow-lg">Ungraded Trend</span>
                 <span class="absolute top-[-14px] right-4 text-[10px] font-bold text-white bg-black/90 px-3 py-1 rounded-full border border-red-500/50 z-20 shadow-lg">30d Vol: {v_sk_raw} Set</span>
-                <img src="{c_sk_raw}" class="w-full h-[155px] object-contain mix-blend-screen opacity-90" />
+                <img src="{c_sk_raw}" class="{chart_img_class_raw}" />
             </div>
         </div>"""
 
@@ -538,6 +796,17 @@ async def generate_report(card_data, snkr_records, pc_records, out_dir=None):
         
     else:
         # Standard 2 Charts (For Graded Cards)
+        if market_theme == "light":
+            table_outer_border = "border-slate-300/70"
+            table_head_border = "border-slate-300/70"
+            table_head_text = "text-slate-600"
+            table_body_divider = "divide-slate-200/80"
+        else:
+            table_outer_border = "border-border-gold/30"
+            table_head_border = "border-border-gold/20"
+            table_head_text = "text-primary-dark"
+            table_body_divider = "divide-border-gold/10"
+
         if snkr_records:
             if '10' in target_grade:
                 valid_snkr_grades = ['S', 'PSA10', 'PSA 10']
@@ -550,49 +819,58 @@ async def generate_report(card_data, snkr_records, pc_records, out_dir=None):
         else:
             snkr_target_records = []
 
-        c_pc = create_premium_matplotlib_chart_b64(pc_records, color_line='#f4d125', target_grade=target_grade, is_jpy=False)
-        c_sk = create_premium_matplotlib_chart_b64(snkr_target_records, color_line='#f4d125', target_grade=target_grade, is_jpy=True)
+        c_pc = create_premium_matplotlib_chart_b64(pc_records, color_line=chart_line_color, target_grade=target_grade, is_jpy=False, theme=market_theme)
+        c_sk = create_premium_matplotlib_chart_b64(snkr_target_records, color_line=chart_line_color, target_grade=target_grade, is_jpy=True, theme=market_theme)
         
         pc_charts_html = f"""
-        <div class="w-full h-44 mb-10 flex items-center justify-center relative">
-            <img src="{c_pc}" class="w-full h-full object-contain mix-blend-screen" />
+        <div class="w-full h-[220px] mt-2 mb-1 flex items-end justify-center relative overflow-hidden">
+            <img src="{c_pc}" class="{chart_img_class}" />
         </div>"""
         
         pc_table_html = f"""
-                <div class="flex-1 glass-panel rounded-xl overflow-hidden p-3 border border-border-gold/30">
+                <div class="flex-1 glass-panel rounded-xl overflow-hidden p-3 border {table_outer_border}">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="border-b border-border-gold/20 text-[10px] font-black uppercase tracking-widest text-primary-dark">
+                            <tr class="border-b {table_head_border} text-[10px] font-black uppercase tracking-widest {table_head_text}">
                                 <th class="p-3">Date (日期)</th>
                                 <th class="p-3">Grade (狀態)</th>
                                 <th class="p-3 text-right">Price (金額)</th>
                             </tr>
                         </thead>
-                        <tbody class="text-sm divide-y divide-border-gold/10">
-                            {generate_table_rows(pc_records, is_jpy=False, target_grade=card_data.get('grade', ''))}
+                        <tbody class="text-sm divide-y {table_body_divider}">
+                            {generate_table_rows(pc_records, is_jpy=False, target_grade=card_data.get('grade', ''), theme=market_theme)}
                         </tbody>
                     </table>
                 </div>"""
         
-        snkr_charts_html = f"""
-        <div class="w-full h-44 mb-6 flex items-center justify-center">
-            <img src="{c_sk}" class="w-full h-full object-contain mix-blend-screen" />
+        if snkr_target_records:
+            snkr_charts_html = f"""
+        <div class="w-full h-[220px] mt-2 mb-1 flex items-end justify-center overflow-hidden">
+            <img src="{c_sk}" class="{chart_img_class}" />
         </div>"""
-        
-        snkr_table_html = f"""
-                <div class="flex-1 glass-panel rounded-xl overflow-hidden p-3 border border-border-gold/30">
+            snkr_table_html = f"""
+                <div class="flex-1 glass-panel rounded-xl overflow-hidden p-3 border {table_outer_border}">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="border-b border-border-gold/20 text-[10px] font-black uppercase tracking-widest text-primary-dark">
+                            <tr class="border-b {table_head_border} text-[10px] font-black uppercase tracking-widest {table_head_text}">
                                 <th class="p-3">Time (時間)</th>
                                 <th class="p-3">Grade (狀態)</th>
                                 <th class="p-3 text-right">Price (金額)</th>
                             </tr>
                         </thead>
-                        <tbody class="text-sm divide-y divide-border-gold/10">
-                            {generate_table_rows(snkr_target_records, is_jpy=True)}
+                        <tbody class="text-sm divide-y {table_body_divider}">
+                            {generate_table_rows(snkr_target_records, is_jpy=True, theme=market_theme)}
                         </tbody>
                     </table>
+                </div>"""
+        else:
+            snkr_charts_html = """
+        <div class="w-full h-[220px] mt-2 mb-1 glass-panel rounded-xl border border-slate-300/70 flex items-center justify-center">
+            <p class="text-slate-500 text-sm font-semibold tracking-wide">No SNKRDUNK trend data for this grade</p>
+        </div>"""
+            snkr_table_html = f"""
+                <div class="glass-panel rounded-xl p-6 border {table_outer_border} text-center">
+                    <p class="text-slate-500 text-sm font-semibold">No SNKRDUNK transactions found for {target_grade}</p>
                 </div>"""
                 
         tgt_prices = []
@@ -640,17 +918,20 @@ async def generate_report(card_data, snkr_records, pc_records, out_dir=None):
         
         # We create a fresh context per request but reuse the browser instance
         # This is very memory efficient and fast
-        context = await browser.new_context(viewport={'width': 1200, 'height': 900})
+        context = await browser.new_context(
+            viewport={"width": 1280, "height": 1000},
+            device_scale_factor=2,
+        )
         
         try:
             page1 = await context.new_page()
             await page1.set_content(html1, wait_until="networkidle")
-            await page1.screenshot(path=out_path_1, full_page=True)
+            await _screenshot_poster_root(page1, out_path_1)
             await page1.close()
             
             page2 = await context.new_page()
             await page2.set_content(html2, wait_until="networkidle")
-            await page2.screenshot(path=out_path_2, full_page=True)
+            await _screenshot_poster_root(page2, out_path_2)
             await page2.close()
         finally:
             await context.close()
