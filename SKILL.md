@@ -205,6 +205,24 @@ When your tool returns JSON from OpenClaw:
 - If `poster_data` is empty or missing, treat that as a tool error and report it explicitly.
 - If your messaging tool cannot send text+file in one call, send in 3 separate calls in the SAME thread: text -> profile image -> market image.
 
+### 🛑 Immutable Report Policy (HIGHEST PRIORITY)
+`report_text` is an immutable payload. You are a transporter, not an editor.
+
+You MUST send the exact string from `report_text`:
+- Keep original headings, emojis, punctuation, spacing, and line breaks.
+- Do not prepend or append extra commentary before/after report body.
+- Do not "optimize" wording, grammar, formatting, or section order.
+- Do not convert language (e.g., zh -> en or en -> zh).
+- Do not replace with your own markdown template.
+
+Allowed operations are only:
+1. Read `report_text` from tool output.
+2. Send that exact text to the thread.
+3. Send `poster_data.profile` and `poster_data.market`.
+
+If you cannot send the exact `report_text`, stop and report transport error.  
+Never send an altered report.
+
 **3. Report (Post in Thread):**
 You MUST read the output JSON from the script. Then, send a new message in the created thread where:
 - The **message text** is exactly the string found in `"report_text"`.
@@ -216,6 +234,7 @@ Before sending anything, verify:
 - I have a valid `thread_id`.
 - All sends use `action="send"` and `channelId=<thread_id>`.
 - I will send `report_text` first.
+- I will send the exact `report_text` string with zero edits.
 - I will send both posters after text.
 - I am not sending to parent channel.
 
